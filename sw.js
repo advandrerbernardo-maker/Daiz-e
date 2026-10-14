@@ -1,8 +1,8 @@
-/* Daiz-e v4.3 · funções principais offline, OCR somente com internet */
-const CACHE='daiz-e-v4-3-validacao-ocr';
+/* Daiz-e v4.3 · novo ícone azul com D branco; funções do app inalteradas */
+const CACHE='daiz-e-v4-3-icone-d2-20261014';
 const SCOPE=self.registration.scope;
 const INDEX=new URL('index.html',SCOPE).href;
-const CORE=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
+const CORE=['./','index.html','manifest.webmanifest','icon-192.png?v=d2-20261014','icon-512.png?v=d2-20261014','icon-maskable-512.png?v=d2-20261014'];
 // Bibliotecas exigidas para abrir o Daiz-e e gerar PDF/DOCX, sem incluir OCR.
 const ESSENCIAIS=[
  'https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js',
@@ -59,7 +59,7 @@ self.addEventListener('fetch',evento=>{
   })());
   return;
  }
- // Javascript essencial: favorece o cache para funcionar offline sem depender do CDN.
+ // JavaScript essencial e ícones: favorece o cache para funcionar offline.
  evento.respondWith((async()=>{
   const cached=await caches.match(req);
   if(cached)return cached;
