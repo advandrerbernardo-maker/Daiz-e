@@ -6,6 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
+<meta name="daize-version" content="4-hibrido-ocr-online">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -135,20 +136,136 @@ ${fmt!=='pdf'&&html`<button class="btn alt" disabled=${busy||!file} onClick=${()
 <button class="btn" onClick=${()=>go('home')}>Voltar ao início</button>
 <div class="print"><${Paper} r=${r}/></div></main>`}
 
+/* ===== Leitura de documentos: OCR local, apenas com internet =====
+   O Tesseract.js baixa o código e o idioma português por HTTPS.
+   A FOTO é processada no aparelho, sem ser enviada a um servidor.
+   As demais funções do Daiz-e continuam independentes do OCR. */
+const AVISO_OCR_ONLINE='O reconhecimento automático de documentos precisa de internet. Conecte-se para usar essa função ou preencha os dados manualmente.';
+const OCR_SCRIPT_URLS=[
+ 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+ 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'
+];
+let ocrLibPromise=null, ocrWorkerPromise=null;
+const limite=(p,ms,msg)=>Promise.race([p,new Promise((_,no)=>setTimeout(()=>no(new Error(msg)),ms))]);
+function carregarScriptOCR(url){return new Promise((ok,no)=>{
+ const tag=document.createElement('script');let terminou=false;
+ const finalizar=erro=>{if(terminou)return;terminou=true;clearTimeout(timer);tag.onload=null;tag.onerror=null;if(erro){tag.remove();no(erro)}else ok()};
+ const timer=setTimeout(()=>finalizar(new Error('Tempo esgotado ao baixar a biblioteca OCR.')),25000);
+ tag.src=url;tag.async=true;
+ tag.onload=()=>finalizar(window.Tesseract&&typeof window.Tesseract.createWorker==='function'?null:new Error('A biblioteca OCR não iniciou.'));
+ tag.onerror=()=>finalizar(new Error('Falha no download da biblioteca OCR.'));
+ document.head.appendChild(tag);
+})}
+async function carregaLib(){
+ if(window.Tesseract&&typeof window.Tesseract.createWorker==='function')return;
+ if(!navigator.onLine)throw new Error(AVISO_OCR_ONLINE);
+ if(!ocrLibPromise)ocrLibPromise=(async()=>{
+  let ultimo=null;
+  for(const url of OCR_SCRIPT_URLS){try{await carregarScriptOCR(url);return}catch(e){ultimo=e}}
+  throw new Error('Não consegui carregar o leitor de documentos. Verifique a conexão e tente novamente. '+String(ultimo&&ultimo.message||''));
+ })().catch(e=>{ocrLibPromise=null;throw e});
+ return ocrLibPromise;
+}
+async function getWorker(){
+ if(!navigator.onLine)throw new Error(AVISO_OCR_ONLINE);
+ if(!ocrWorkerPromise)ocrWorkerPromise=(async()=>{
+  await carregaLib();
+  // As URLs indicam somente arquivos do programa e do idioma; nenhuma foto é enviada.
+  return await limite(window.Tesseract.createWorker('por',1,{
+   workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+   corePath:'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
+   langPath:'https://tessdata.projectnaptha.com/4.0.0',
+   gzip:true,
+   cacheMethod:'write'
+  }),90000,'O leitor demorou muito para iniciar. Confira a internet e tente novamente.');
+ })().catch(e=>{ocrWorkerPromise=null;throw e});
+ return ocrWorkerPromise;
+}
+
+/* ---- qualidade da foto ---- */
+const carregar=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error('Não foi possível abrir a imagem.'));i.src=URL.createObjectURL(f)});
+async function analisar(f){
+ const i=await carregar(f),W0=i.naturalWidth,H0=i.naturalHeight;
+ if(Math.min(W0,H0)<700){URL.revokeObjectURL(i.src);return {problema:'Resolução muito baixa ('+W0+'×'+H0+'). Chegue mais perto do documento ou use a câmera em resolução maior.'}}
+ const nit=await blur(f).catch(()=>99);
+ if(nit<25){URL.revokeObjectURL(i.src);return {problema:'A foto está desfocada. Apoie o celular, toque na tela para focar e tire outra.'}}
+ const L=Math.max(W0,H0),k=L>2200?2200/L:L<1500?1800/L:1,w=Math.round(W0*k),h=Math.round(H0*k);
+ const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});
+ x.drawImage(i,0,0,w,h);URL.revokeObjectURL(i.src);
+ const d=x.getImageData(0,0,w,h),p=d.data,n=w*h,g=new Float32Array(n),hist=new Uint32Array(256);let soma=0;
+ for(let q=0;q<n;q++){const v=.299*p[4*q]+.587*p[4*q+1]+.114*p[4*q+2];g[q]=v;soma+=v;hist[v|0]++}
+ const br=soma/n;
+ if(br<45)return {problema:'A foto está escura demais. Procure um local iluminado, sem sombra sobre o documento.'};
+ if(br>238)return {problema:'A foto está clara demais (reflexo ou flash). Incline um pouco o documento e tire outra.'};
+ let acc=0,lo=0,hi=255;for(let v=0;v<256;v++){acc+=hist[v];if(acc>=n*.02){lo=v;break}}
+ acc=0;for(let v=255;v>=0;v--){acc+=hist[v];if(acc>=n*.02){hi=v;break}}
+ const esc=255/Math.max(hi-lo,1);
+ for(let q=0;q<n;q++){const v=Math.max(0,Math.min(255,(g[q]-lo)*esc));p[4*q]=p[4*q+1]=p[4*q+2]=v;p[4*q+3]=255}
+ x.putImageData(d,0,0);
+ return {canvas:c};
+}
+
+/* ---- extração dos dados (nada é inventado: só o que o OCR leu e passou nas validações) ---- */
+const STL=/\b(REP[UÚ]BLICA|FEDERATIV|BRASIL|CARTEIRA|NACIONAL|HABILITA|IDENTIDADE|MINIST|SECRETARIA|DETRAN|DOCUMENTO|ASSINATURA|V[AÁ]LID|TERRIT|FILIA|REGISTRO|NASCIMENTO|NATURALIDADE|EXPEDI|CATEGORIA|OBSERVA|INSTITUTO|POL[IÍ]CIA|PERMISS|MOTORISTA|ENDERE|VENCIMENTO|ENERGIA|FATURA|CONSUMIDOR)/i;
+const STS=/\b(CPF|CNH|RG|VIA|DATA|PAI|M[AÃ]E|SSP|LOCAL|TOTAL|VALOR|ESTADO|CLIENTE|DOC)\b/i;
+const limpaNome=s=>s.replace(/[^A-Za-zÀ-ÿ'’\s-]/g,' ').replace(/\s+/g,' ').trim();
+const titulo=s=>{const m=['da','de','do','das','dos','e'];return s.toLowerCase().split(' ').map((w,i)=>i&&m.includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(' ')};
+const nomeOk=s=>{const p=s.split(' ');return p.length>=2&&p.length<=8&&s.length>=7&&s.length<=60&&p.every(w=>w.length>=2||w.toLowerCase()==='e')&&!STL.test(s)&&!STS.test(s)};
+function acharNome(L){
+ for(let i=0;i<L.length;i++){
+  const m=L[i].match(/^\W*(nome(?!\s+d[ao]\s+(pai|m[aã]e))(\s+completo)?|name|titular|cliente)\b\W*(.*)$/i);
+  if(!m)continue;
+  let cand=limpaNome(m[4]);
+  if(!nomeOk(cand)){cand='';for(let j=i+1;j<Math.min(i+4,L.length);j++){const t=limpaNome(L[j]);if(nomeOk(t)){cand=t;break}}}
+  if(cand)return titulo(cand);
+ }
+ const ex=new Set();L.forEach((l,i)=>{if(/filia|m[aã]e|\bpai\b/i.test(l)){ex.add(i);ex.add(i+1);ex.add(i+2)}});
+ let best='';L.forEach((l,i)=>{if(ex.has(i))return;const t=limpaNome(l);if(t===t.toUpperCase()&&nomeOk(t)&&t.length>best.length)best=t});
+ return best?titulo(best):'';
+}
+function acharCPF(t){
+ const tn=t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8');
+ const re=/\d{3}[.\s]{0,2}\d{3}[.\s]{0,2}\d{3}[-.\s]{0,2}\d{2}/g,ok=[],ruins=[];let m;
+ while((m=re.exec(tn))){const d=m[0].replace(/\D/g,'');if(d.length!==11)continue;(cpfOk(d)?ok:ruins).push({d,i:m.index})}
+ const lab=[...t.matchAll(/cpf/gi)].map(x=>x.index),perto=o=>lab.some(l=>o.i>=l&&o.i-l<60);
+ if(ok.length)return {cpf:cpfMask((ok.find(perto)||ok[0]).d)};
+ return {cpf:'',inval:ruins.some(perto)};
+}
+function acharEnd(L){
+ const via=/\b(rua|r\.|av\.?|avenida|travessa|tv\.|alameda|estrada|rodovia|beco|pra[cç]a|conjunto|quadra|loteamento|vila)\s/i;
+ const cont=/(\bcep\b|\d{5}-?\d{3}|manaus|\bAM\b|bairro|centro|\bcidade\b)/i;
+ for(let i=0;i<L.length;i++){
+  const s=L[i].replace(/^\W*(endere[cç]o|logradouro|resid[eê]ncia)\b\W*/i,'');
+  if(!via.test(s+' ')||(!/\d/.test(s)&&!/,/.test(s)))continue;
+  const p=[s];
+  for(let j=i+1;j<Math.min(i+3,L.length);j++){const n=L[j];if(n.length<90&&cont.test(n)&&!via.test(n+' '))p.push(n.replace(/^\W+/,''));else break}
+  return p.join(' - ').replace(/\s+/g,' ').trim().slice(0,160);
+ }
+ return '';
+}
+function extrair(t){
+ const L=t.split(/\r?\n/).map(x=>x.replace(/[|_~]+/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean),c=acharCPF(t);
+ return {nome:acharNome(L),cpf:c.cpf,inval:c.inval,end:acharEnd(L)};
+}
+
 function App(){
-const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI);
+const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null);
 useEffect(()=>ls.set('dz-c',clients),[clients]);useEffect(()=>ls.set('dz-r',recs),[recs]);useEffect(()=>ls.set('dz-t',tp),[tp]);
 const go=s=>{setErr('');setScr(s)};
-const shrink=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const k=Math.min(1,2000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(i.src);c.toBlob(b=>b?ok(b):no(),'image/jpeg',.85)};i.onerror=no;i.src=URL.createObjectURL(f)});
-const onPhoto=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;setPh('busy');
-try{const bl=await blur(f).catch(()=>99);
-const s=window.claude&&await window.claude.use('sample');if(!s){setPh('nosample');return}
-setPh('reading');const b=await shrink(f);
-const o=await s.json('Extraia os dados deste documento brasileiro (RG, CNH, CPF ou comprovante de endereço). Responda SOMENTE com JSON no formato {"nome":"","cpf":"","end":""}. Use "" para o que não estiver legível. A foto pode estar inclinada, escura ou com reflexo: leia com o máximo de esforço. Não invente dados.',{images:[b],cache:false,modelTier:'default'});
-const n=String(o.nome||'').trim(),c=cpfMask(String(o.cpf||'')),a=String(o.end||'').trim();
-if(!n&&!c&&!a){setPh(bl<30?'bad':'empty');return}
-setD(p=>({...p,clienteId:'',nome:n||p.nome,cpf:c||p.cpf,end:a||p.end}));setPh('read')}
-catch(x){setPh(x&&x.code==='not_granted'?'denied':'fail')}};
+const onPhoto=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+setRes(null);setPm('');setPh('busy');
+try{
+ if(!navigator.onLine){setPm(AVISO_OCR_ONLINE);setPh('offline');return}
+ const q=await analisar(f);
+ if(q.problema){setPm(q.problema);setPh('bad');return}
+ setPh('reading');
+ const w=await getWorker(),r=await limite(w.recognize(q.canvas),120000,'A leitura demorou demais. Tente de novo com uma foto mais próxima do documento.');
+ const txt=r.data.text||'',conf=r.data.confidence||0,pal=txt.split(/\s+/).filter(t=>t.replace(/\W/g,'').length>2).length;
+ if(conf<35||pal<8){setPm('Não consegui ler o texto do documento (legibilidade baixa). Tire outra foto, mais perto, com boa luz e sem reflexo.');setPh('bad');return}
+ const x=extrair(txt);
+ setD(p=>({...p,clienteId:'',nome:x.nome||p.nome,cpf:x.cpf||p.cpf,end:x.end||p.end}));
+ setRes(x);setPh('read');
+}catch(x){setPm(!navigator.onLine?AVISO_OCR_ONLINE:'Não foi possível reconhecer o documento. Verifique a conexão, tire outra foto ou digite os dados manualmente. Detalhe: '+String(x&&x.message||x));setPh('fail')}};
 const numero=String(recs.length+1).padStart(4,'0');
 const setF=k=>e=>setD({...d,[k]:e.target.value});
 const pick=e=>{const c=clients.find(x=>x.id===e.target.value);setD(c?{...d,clienteId:c.id,nome:c.nome,cpf:c.cpf,end:c.end}:{...d,clienteId:''})};
@@ -171,7 +288,7 @@ ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
 <button class="btn" onClick=${saveC}>Salvar cliente</button>
 ${cf.id&&html`<button class="btn alt" onClick=${()=>{setClients(clients.filter(c=>c.id!==cf.id));go('clients')}}>Excluir cliente</button>`}</main>`;
 if(scr==='new')return html`<${Top} t=${'Novo recibo · Nº '+numero} back=${()=>go('home')}/><main><div class="card f" style="gap:12px">
-<div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando foto…</div>`}${ph==='bad'&&html`<div class="err" role="alert">Não consegui ler: a foto parece desfocada ou escura. Tire outra com boa luz, sem reflexo e com o celular firme.</div>`}${ph==='reading'&&html`<div class="mut">Lendo os dados do documento…</div>`}${ph==='read'&&html`<div class="ok">Dados lidos da foto e preenchidos abaixo. Confira nome, CPF e endereço antes de emitir.</div>`}${ph==='empty'&&html`<div class="err" role="alert">Não consegui ler dados nessa foto. Tente outra mais nítida ou preencha manualmente.</div>`}${ph==='nosample'&&html`<div class="err" role="alert">A leitura automática não está disponível nesta visualização. Preencha manualmente.</div>`}${ph==='denied'&&html`<div class="err" role="alert">Permissão negada para ler a foto. Preencha manualmente.</div>`}${ph==='fail'&&html`<div class="err" role="alert">Não foi possível ler a foto agora. Tente novamente ou preencha manualmente.</div>`}</div>
+<div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando nitidez, resolução e iluminação…</div>`}${ph==='reading'&&html`<div class="mut">Lendo o documento no aparelho… pode levar até 30 segundos.</div>`}${(ph==='bad'||ph==='fail'||ph==='offline')&&html`<div class="err" role="alert">${pm}</div>`}${ph==='read'&&res&&html`<div class="ok"><b>Leitura concluída. Confira e corrija os campos abaixo antes de emitir.</b><br/>Nome: ${res.nome?'lido':'não encontrado'} · CPF: ${res.cpf?'lido e válido':(res.inval?'lido, mas inválido: digite o CPF':'não encontrado')} · Endereço: ${res.end?'lido':'não encontrado neste documento'}</div>`}</div>
 <div class="f"><label>Cliente cadastrado</label><select value=${d.clienteId} onChange=${pick}><option value="">Digitar manualmente</option>${clients.map(c=>html`<option value=${c.id}>${c.nome}</option>`)}</select></div>
 <div class="f"><label>Nome</label><input value=${d.nome} onInput=${setF('nome')}/></div>
 <div class="row"><div class="f"><label>CPF</label><input inputMode="numeric" value=${d.cpf} onInput=${e=>setD({...d,cpf:cpfMask(e.target.value)})}/></div><div class="f"><label>Data</label><input type="date" value=${d.data} onInput=${setF('data')}/></div></div>
@@ -188,6 +305,7 @@ return html`<${Top} t="Daiz-e"/><main>
 <div class="card hero"><h2>Recibos em segundos</h2><p>${EMI.nome}</p><button class="btn light" onClick=${()=>go('new')}>Emitir novo recibo</button></div>
 <div class="row"><button class="btn alt" onClick=${()=>go('clients')}>Clientes (${clients.length})</button><button class="btn alt" onClick=${()=>go('hist')}>Histórico (${recs.length})</button></div>
 <button class="btn alt" onClick=${()=>{setEf(EMI);go('emp')}}>${EMI.cnpj?'Dados da imobiliária':'Cadastrar CNPJ da imobiliária'}</button>
+<div class="mut" style="text-align:center">Leitura automática com internet. Recibos manuais disponíveis offline.</div>
 <div class="card"><h3>Últimos recibos</h3>${recs.length?recs.slice(0,6).map(r=>html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></button>`):html`<div class="empty">Nenhum recibo emitido. Toque em “Emitir novo recibo” para começar.</div>`}</div></main>`}
 class EB extends React.Component{constructor(p){super(p);this.state={e:null}}static getDerivedStateFromError(e){return{e}}render(){const e=this.state.e;return e?React.createElement('pre',{style:{padding:12,color:'#b3261e',whiteSpace:'pre-wrap'}},'Erro: '+e.message+'\n'+String(e.stack||'').slice(0,700)):this.props.children}}
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(EB,null,React.createElement(App)));
