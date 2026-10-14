@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.1-hibrido-ocr-seguro">
+<meta name="daize-version" content="4.2-editar-excluir">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -27,6 +27,13 @@ main{padding:16px;display:flex;flex-direction:column;gap:14px}
 .hero h2{margin:0 0 4px;font-size:22px}.hero p{margin:0 0 16px;opacity:.85}
 .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;border-radius:12px;border:2px solid var(--blue);background:var(--blue);color:#fff;font:600 16px Sora,system-ui,sans-serif;cursor:pointer;padding:10px 14px}
 .btn.alt{background:transparent;color:var(--blue)}
+.btn.danger{background:transparent;border-color:var(--err);color:var(--err)}
+.rec-actions{display:flex;gap:8px;flex-wrap:wrap;margin:7px 0 13px}
+.rec-actions button{flex:1;min-height:40px;border:1.5px solid var(--line);border-radius:9px;background:transparent;color:var(--blue);font:600 13px Sora,system-ui,sans-serif;cursor:pointer}
+.rec-actions button.danger{color:var(--err);border-color:var(--err)}
+.rec-item{border-bottom:1px solid var(--line)}.rec-item:last-child{border-bottom:0}
+.rec-item .li{border-bottom:0}
+.rec-item .li:focus-visible,.rec-actions button:focus-visible{outline:3px solid #7FA8FF;outline-offset:2px}
 .btn.wa{background:var(--wa);border-color:var(--wa);min-height:60px;font-size:17px}
 .btn.light{background:#fff;color:var(--navy);border-color:#fff}
 .btn:disabled{opacity:.55;cursor:not-allowed}
@@ -79,6 +86,8 @@ const EM0={nome:'Imóveis Manaus Imobiliária',rs:'Daize do S S Avelar',cnpj:'23
 const cnpjMask=v=>{const d=v.replace(/\D/g,'').slice(0,14);return d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')};
 const today=()=>new Date().toISOString().slice(0,10);
 const dbr=s=>s?s.split('-').reverse().join('/'):'';
+const stampBR=stamp=>stamp?new Date(stamp).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
+const nRec=r=>Number.parseInt(String(r&&r.numero||'0'),10)||0;
 const blank=()=>({clienteId:'',nome:'',cpf:'',end:'',valor:0,ref:'',forma:'PIX',data:today()});
 const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${String(r.ref||'').trim().replace(/[.\s]+$/,'')}.`;
 const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
@@ -93,11 +102,11 @@ x.fillStyle='#0B2247';x.font='700 50px Sora,Arial,sans-serif';x.fillText(brl(r.v
 x.font='28px Sora,Arial,sans-serif';let y=400;y=wrap(x,body(r),50,y,W-100,48);
 y+=14;x.fillStyle='#5A6B8C';x.font='24px Sora,Arial,sans-serif';x.fillText('Forma de pagamento: '+r.forma,50,y);
 x.fillStyle='#0B2247';x.fillText('Manaus, '+dbr(r.data),50,y+70);
-x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.font='22px Sora,Arial,sans-serif';x.fillText(E(r).nome,W/2,H-155);x.font='19px Sora,Arial,sans-serif';const l2=(E(r).rs?E(r).rs+' · ':'')+(E(r).cnpj?'CNPJ '+E(r).cnpj:'');if(l2)x.fillText(l2,W/2,H-125);if(E(r).end)x.fillText(E(r).end,W/2,H-98);return c}
+x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.font='22px Sora,Arial,sans-serif';x.fillText(E(r).nome,W/2,H-155);x.font='19px Sora,Arial,sans-serif';const l2=(E(r).rs?E(r).rs+' · ':'')+(E(r).cnpj?'CNPJ '+E(r).cnpj:'');if(l2)x.fillText(l2,W/2,H-125);if(E(r).end)x.fillText(E(r).end,W/2,H-98);if(r.revisadoEm){x.fillStyle='#5A6B8C';x.font='16px Sora,Arial,sans-serif';x.fillText('Recibo retificado em '+stampBR(r.revisadoEm),W/2,H-65)}return c}
 async function build(r,fmt){const c=draw(r),nm='recibo-'+r.numero;
 if(fmt==='pdf'){if(!window.jspdf)throw new Error('pdf');const d=new window.jspdf.jsPDF({unit:'pt',format:'a4'});d.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,595,595*c.height/c.width);return new File([d.output('blob')],nm+'.pdf',{type:'application/pdf'})}
 if(fmt==='docx'){if(!window.JSZip)throw new Error('docx');const z=new JSZip(),e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;'),P=(t,o={})=>`<w:p><w:pPr>${o.f?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.f+'"/>':''}</w:pPr><w:r><w:rPr>${o.b?'<w:b/>':''}<w:color w:val="${o.c||'0B2247'}"/><w:sz w:val="${o.sz||24}"/></w:rPr><w:t xml:space="preserve">${e(t)}</w:t></w:r></w:p>`;
-const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+P(E(r).nome+(E(r).rs?' ('+E(r).rs+')':'')+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''))+P(E(r).end||'');
+const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+P(E(r).nome+(E(r).rs?' ('+E(r).rs+')':'')+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''))+P(E(r).end||'')+(r.revisadoEm?P('Recibo retificado em '+stampBR(r.revisadoEm)): '');
 z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
 z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
 z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+dc+'</w:body></w:document>');
@@ -107,13 +116,13 @@ async function save(f){try{const d=window.claude&&await window.claude.use('downl
 const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove()}
 
 const Paper=({r})=>html`<div class="paper"><div class="hd"><div><b>RECIBO</b><br/><span>${E(r).nome}${E(r).cnpj?' · CNPJ '+E(r).cnpj:''}</span></div><div style="text-align:right"><b style="font-size:16px">Nº ${r.numero}</b><br/><span>${dbr(r.data)}</span></div></div>
-<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p><div class="sg">${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
+<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p>${r.revisadoEm&&html`<p style="font-size:11px;color:#5A6B8C">Recibo retificado em ${stampBR(r.revisadoEm)}.</p>`}<div class="sg">${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
 const Top=({t,back})=>html`<div class="top">${back&&html`<button onClick=${back} aria-label="Voltar">←</button>`}<h1>${t}</h1></div>`;
 const Share=()=>html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 
-function Done({r,go}){
+function Done({r,go,onEdit,onDelete}){
 const [fmt,setFmt]=useState('pdf'),[file,setFile]=useState(null),[busy,setBusy]=useState(true),[err,setErr]=useState(''),[note,setNote]=useState(''),[msg,setMsg]=useState(MSG),[show,setShow]=useState(false);
-useEffect(()=>{let off=false;setBusy(true);setErr('');setFile(null);build(r,fmt).then(f=>{if(!off){setFile(f);setBusy(false)}}).catch(()=>{if(!off){setErr('Não foi possível gerar o arquivo. Seus dados foram mantidos; tente outro formato.');setBusy(false)}});return()=>{off=true}},[fmt,r.id]);
+useEffect(()=>{let off=false;setBusy(true);setErr('');setFile(null);build(r,fmt).then(f=>{if(!off){setFile(f);setBusy(false)}}).catch(()=>{if(!off){setErr('Não foi possível gerar o arquivo. Seus dados foram mantidos; tente outro formato.');setBusy(false)}});return()=>{off=true}},[fmt,r.id,r.revisadoEm]);
 const copy=async()=>{try{await navigator.clipboard.writeText(msg);setNote('Mensagem copiada. Cole na conversa do WhatsApp.')}catch(e){setNote('Não foi possível copiar automaticamente. Selecione o texto da mensagem e copie manualmente.')}};
 const share=async()=>{if(!file)return;setNote('');
 try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:msg});setNote('O menu de compartilhamento foi concluído. Confirme no WhatsApp se a mensagem foi enviada — o Daiz-e não consegue verificar a entrega.')}
@@ -122,7 +131,9 @@ catch(e){if(e&&e.name==='AbortError')setNote('Compartilhamento cancelado. Nada f
 const pdf=async()=>{try{save(fmt==='pdf'&&file?file:await build(r,'pdf'))}catch(e){setErr('Não foi possível gerar o PDF.')}};
 const prt=()=>{try{window.print()}catch(e){setErr('A impressão não está disponível neste ambiente. Baixe o PDF e imprima por ele.')}};
 return html`<${Top} t="Recibo pronto" back=${()=>go('home')}/><main>
-<div class="card hero"><h2>RECIBO PRONTO</h2><p>Nº ${r.numero} · ${brl(r.valor)} · ${r.nome}</p></div>
+<div class="card hero"><h2>RECIBO ${r.revisadoEm?'ATUALIZADO':'PRONTO'}</h2><p>Nº ${r.numero} · ${brl(r.valor)} · ${r.nome}</p></div>
+${r.revisadoEm&&html`<div class="ok">Recibo retificado em ${stampBR(r.revisadoEm)}. Gere novamente o arquivo e envie a versão atualizada ao destinatário.</div>`}
+<div class="row"><button class="btn alt" onClick=${()=>onEdit(r)}>✎ Editar recibo</button><button class="btn danger" onClick=${()=>onDelete(r)}>Excluir recibo</button></div>
 <div class="card"><label>Formato do arquivo</label><div class="chips">${[['pdf','PDF'],['png','PNG'],['jpeg','JPEG'],['docx','DOCX']].map(([k,n])=>html`<button class=${'chip'+(fmt===k?' on':'')} onClick=${()=>setFmt(k)}>${n}</button>`)}</div>
 <div class="f" style="margin-top:14px"><label>Mensagem (opcional)</label><textarea value=${msg} onInput=${e=>setMsg(e.target.value)}></textarea></div>
 <button class="btn alt" style="margin-top:10px;min-height:44px" onClick=${copy}>Copiar mensagem</button></div>
@@ -265,9 +276,23 @@ function extrair(t){
 }
 
 function App(){
-const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null);
+const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null),[editId,setEditId]=useState(null),[lixeira,setLixeira]=useState(()=>ls.get('dz-r-lixeira',[])),[mostrarLixeira,setMostrarLixeira]=useState(false),[ultimoNumero,setUltimoNumero]=useState(()=>Math.max(Number(ls.get('dz-last-num',0))||0,...ls.get('dz-r',[]).map(nRec),...ls.get('dz-r-lixeira',[]).map(nRec)));
 useEffect(()=>ls.set('dz-c',clients),[clients]);useEffect(()=>ls.set('dz-r',recs),[recs]);useEffect(()=>ls.set('dz-t',tp),[tp]);
+useEffect(()=>ls.set('dz-r-lixeira',lixeira),[lixeira]);useEffect(()=>ls.set('dz-last-num',ultimoNumero),[ultimoNumero]);
 const go=s=>{setErr('');setScr(s)};
+const novoRecibo=()=>{setEditId(null);setD(blank());setRes(null);setPm('');setPh('');go('new')};
+const editarRecibo=r=>{setEditId(r.id);setCur(r);setD({...r});setRes(null);setPm('');setPh('');go('new')};
+const cancelarFormulario=()=>{if(editId){setEditId(null);setD(blank());go('done')}else{setD(blank());go('home')}};
+const excluirRecibo=r=>{
+ if(!window.confirm('Excluir o recibo nº '+r.numero+' de '+r.nome+'? Ele será movido para a lixeira e poderá ser restaurado.'))return;
+ setUltimoNumero(n=>Math.max(n,nRec(r)));
+ setLixeira(prev=>[{...r,excluidoEm:new Date().toISOString()},...prev.filter(x=>x.id!==r.id)]);
+ setRecs(prev=>prev.filter(x=>x.id!==r.id));setCur(null);setEditId(null);setMostrarLixeira(false);go('hist');
+};
+const restaurarRecibo=r=>{
+ if(recs.some(x=>x.id===r.id)){setErr('Este recibo já está no histórico.');return}
+ const {excluidoEm,...recuperado}=r;setRecs(prev=>[recuperado,...prev]);setLixeira(prev=>prev.filter(x=>x.id!==r.id));setMostrarLixeira(false);go('hist')
+};
 const onPhoto=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
 setRes(null);setPm('');setPh('busy');
 try{
@@ -288,16 +313,43 @@ try{
  setD(p=>({...p,clienteId:'',nome:x.nome||'',cpf:x.cpf||'',end:x.end||''}));
  setRes(x);setPh('read');
 }catch(x){setPm(!navigator.onLine?AVISO_OCR_ONLINE:'Não foi possível reconhecer o documento. Verifique a conexão, tire outra foto ou digite os dados manualmente. Detalhe: '+String(x&&x.message||x));setPh('fail')}};
-const numero=String(recs.length+1).padStart(4,'0');
+// Não reutilizar número após exclusão. A maior numeração fica salva separadamente do histórico.
+const maiorNumero=Math.max(ultimoNumero,...recs.map(nRec),...lixeira.map(nRec));
+const numero=editId?(recs.find(r=>r.id===editId)?.numero||String(maiorNumero+1).padStart(4,'0')):String(maiorNumero+1).padStart(4,'0');
 const setF=k=>e=>setD({...d,[k]:e.target.value});
 const pick=e=>{const c=clients.find(x=>x.id===e.target.value);setD(c?{...d,clienteId:c.id,nome:c.nome,cpf:c.cpf,end:c.end}:{...d,clienteId:''})};
 const saveC=()=>{if(!cf.nome.trim()){setErr('Informe o nome do cliente.');return}setClients(cf.id?clients.map(c=>c.id===cf.id?cf:c):[...clients,{...cf,id:'c'+Date.now()}]);go('clients')};
 const review=()=>{if(!d.nome.trim())return setErr('Informe o nome do cliente.');if(d.cpf&&!cpfOk(d.cpf))return setErr('CPF inválido. Confira os números.');if(!d.valor)return setErr('Informe o valor.');if(!d.ref.trim())return setErr('Preencha o campo “Referente a”.');go('review')};
-const confirm=()=>{const r={...d,id:'r'+Date.now(),numero,em:EMI};setRecs([r,...recs]);setCur(r);setD(blank());go('done')};
+const confirm=()=>{
+ if(editId){
+  const anterior=recs.find(r=>r.id===editId);
+  if(!anterior){setErr('Não encontrei o recibo original. Volte ao histórico.');go('hist');return}
+  const campos=['clienteId','nome','cpf','end','valor','ref','forma','data'];
+  const mudou=campos.some(k=>String(anterior[k]??'')!==String(d[k]??''));
+  if(!mudou){setCur(anterior);setEditId(null);setD(blank());go('done');return}
+  const agora=new Date().toISOString();
+  const registro={em:agora,anterior:Object.fromEntries(campos.map(k=>[k,anterior[k]]))};
+  const atualizado={...anterior,...Object.fromEntries(campos.map(k=>[k,d[k]])),revisadoEm:agora,revisoes:[...(anterior.revisoes||[]),registro]};
+  setRecs(prev=>prev.map(r=>r.id===editId?atualizado:r));
+  setCur(atualizado);setEditId(null);setD(blank());go('done');return;
+ }
+ const r={...d,id:'r'+Date.now(),numero,em:{...EMI}};
+ setUltimoNumero(n=>Math.max(n,nRec(r)));setRecs(prev=>[r,...prev]);setCur(r);setD(blank());go('done')
+};
 
-if(scr==='done'&&cur)return html`<${Done} r=${cur} go=${go}/>`;
+if(scr==='done'&&cur)return html`<${Done} r=${cur} go=${go} onEdit=${editarRecibo} onDelete=${excluirRecibo}/>`;
 if(scr==='emp')return html`<${Top} t="Dados da imobiliária" back=${()=>go('home')}/><main><div class="card f" style="gap:12px"><div class="f"><label>Nome da imobiliária</label><input value=${ef.nome} onInput=${e=>setEf({...ef,nome:e.target.value})}/></div><div class="f"><label>Razão social</label><input value=${ef.rs||''} onInput=${e=>setEf({...ef,rs:e.target.value})}/></div><div class="f"><label>CNPJ</label><input inputMode="numeric" placeholder="00.000.000/0000-00" value=${ef.cnpj} onInput=${e=>setEf({...ef,cnpj:cnpjMask(e.target.value)})}/></div><div class="f"><label>Endereço e telefone (opcional)</label><input value=${ef.end} onInput=${e=>setEf({...ef,end:e.target.value})}/></div><div class="mut">Esses dados saem em todos os recibos novos.</div>${err&&html`<div class="err" role="alert">${err}</div>`}</div><button class="btn" onClick=${()=>{if(!ef.nome.trim())return setErr('Informe o nome da imobiliária.');EMI=ef;ls.set('dz-e',ef);setEm(ef);go('home')}}>Salvar dados</button></main>`;
-if(scr==='hist'){const L=recs.filter(r=>(r.nome+r.ref+r.numero).toLowerCase().includes(q.toLowerCase()));return html`<${Top} t="Histórico" back=${()=>go('home')}/><main><input placeholder="Buscar por nome, número ou assunto" value=${q} onInput=${e=>setQ(e.target.value)}/><div class="card">${L.length?L.map(r=>html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></button>`):html`<div class="empty">Nenhum recibo encontrado.</div>`}</div></main>`}
+if(scr==='hist'){
+ const L=(mostrarLixeira?lixeira:recs).filter(r=>(String(r.nome||'')+String(r.ref||'')+String(r.numero||'')).toLowerCase().includes(q.toLowerCase()));
+ return html`<${Top} t=${mostrarLixeira?'Lixeira de recibos':'Histórico'} back=${()=>{if(mostrarLixeira){setMostrarLixeira(false);setQ('')}else go('home')}}/><main>
+ <input placeholder="Buscar por nome, número ou assunto" value=${q} onInput=${e=>setQ(e.target.value)}/>
+ <div class="card">${L.length?L.map(r=>html`<div class="rec-item" key=${r.id}>
+ ${mostrarLixeira?html`<div class="li" style="cursor:default"><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></div>`:html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}${r.revisadoEm?' · retificado':''}</small></span><b>${brl(r.valor)}</b></button>`}
+ <div class="rec-actions">${mostrarLixeira?html`<button onClick=${()=>restaurarRecibo(r)}>Restaurar recibo</button>`:html`<button onClick=${()=>editarRecibo(r)}>✎ Editar</button><button class="danger" onClick=${()=>excluirRecibo(r)}>Excluir</button>`}</div></div>`):html`<div class="empty">${mostrarLixeira?'A lixeira está vazia.':'Nenhum recibo encontrado.'}</div>`}</div>
+ ${err&&html`<div class="err" role="alert">${err}</div>`}
+ <button class="btn alt" onClick=${()=>{setMostrarLixeira(!mostrarLixeira);setQ('');setErr('')}}>${mostrarLixeira?'← Voltar ao histórico':'Lixeira ('+lixeira.length+')'}</button>
+ </main>`
+}
 if(scr==='clients')return html`<${Top} t="Clientes" back=${()=>go('home')}/><main>
 <button class="btn" onClick=${()=>{setCf({nome:'',cpf:'',tel:'',end:''});go('client')}}>+ Novo cliente</button>
 <div class="card">${clients.length?clients.map(c=>html`<button class="li" onClick=${()=>{setCf(c);go('client')}}><span>${c.nome}<small>${c.cpf||'Sem CPF'}</small></span><span class="mut">Editar</span></button>`):html`<div class="empty">Nenhum cliente ainda. Cadastre o primeiro para preencher recibos mais rápido.</div>`}</div></main>`;
@@ -309,7 +361,7 @@ if(scr==='client'&&cf)return html`<${Top} t=${cf.id?'Editar cliente':'Novo clien
 ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
 <button class="btn" onClick=${saveC}>Salvar cliente</button>
 ${cf.id&&html`<button class="btn alt" onClick=${()=>{setClients(clients.filter(c=>c.id!==cf.id));go('clients')}}>Excluir cliente</button>`}</main>`;
-if(scr==='new')return html`<${Top} t=${'Novo recibo · Nº '+numero} back=${()=>go('home')}/><main><div class="card f" style="gap:12px">
+if(scr==='new')return html`<${Top} t=${(editId?'Editar recibo · Nº ':'Novo recibo · Nº ')+numero} back=${cancelarFormulario}/><main><div class="card f" style="gap:12px">
 <div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando nitidez, resolução e iluminação…</div>`}${ph==='reading'&&html`<div class="mut">Lendo o documento no aparelho… pode levar até 30 segundos.</div>`}${(ph==='bad'||ph==='fail'||ph==='offline')&&html`<div class="err" role="alert">${pm}</div>`}${ph==='read'&&res&&html`<div class="ok"><b>Leitura concluída. Confira e corrija os campos abaixo antes de emitir.</b><br/>Nome: ${res.nome?'lido':'não encontrado'} · CPF: ${res.cpf?'lido e válido':(res.inval?'lido, mas inválido: digite o CPF':'não encontrado')} · Endereço: ${res.end?'lido':'não encontrado neste documento'}</div>`}</div>
 <div class="f"><label>Cliente cadastrado</label><select value=${d.clienteId} onChange=${pick}><option value="">Digitar manualmente</option>${clients.map(c=>html`<option value=${c.id}>${c.nome}</option>`)}</select></div>
 <div class="f"><label>Nome</label><input value=${d.nome} onInput=${setF('nome')}/></div>
@@ -321,10 +373,13 @@ if(scr==='new')return html`<${Top} t=${'Novo recibo · Nº '+numero} back=${()=>
 <div class="chips">${tp.map(t=>html`<button class="chip" onClick=${()=>setD({...d,ref:t.ref,forma:t.forma,valor:t.valor})}>★ ${t.ref}</button>`)}<button class="chip" onClick=${()=>d.ref.trim()?setTp([...tp.filter(t=>t.ref!==d.ref),{ref:d.ref,forma:d.forma,valor:d.valor}]):setErr('Preencha “Referente a” para salvar o modelo.')}>Salvar como modelo</button></div>
 <div class="f"><label>Forma de pagamento</label><select value=${d.forma} onChange=${setF('forma')}>${['PIX','Dinheiro','Transferência','Cartão','Boleto'].map(f=>html`<option>${f}</option>`)}</select></div>
 ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
-<button class="btn" onClick=${review}>Revisar recibo</button></main>`;
-if(scr==='review')return html`<${Top} t="Conferir recibo" back=${()=>go('new')}/><main>${!EMI.cnpj&&html`<div class="err" role="alert">O CNPJ da imobiliária não está cadastrado e não vai aparecer no recibo. Cadastre na tela inicial.</div>`}<${Paper} r=${{...d,numero}}/><button class="btn" onClick=${confirm}>Confirmar emissão</button><button class="btn alt" onClick=${()=>go('new')}>Editar dados</button></main>`;
+<button class="btn" onClick=${review}>${editId?'Revisar alterações':'Revisar recibo'}</button>
+${editId&&html`<button class="btn alt" onClick=${cancelarFormulario}>Cancelar edição</button>`}</main>`;
+if(scr==='review')return html`<${Top} t=${editId?'Conferir correção':'Conferir recibo'} back=${()=>go('new')}/><main>${!EMI.cnpj&&html`<div class="err" role="alert">O CNPJ da imobiliária não está cadastrado e não vai aparecer no recibo. Cadastre na tela inicial.</div>`}
+${editId&&html`<div class="ok"><b>Correção do recibo nº ${numero}</b><br/>O número não será alterado. Ao salvar, a versão atualizada substituirá a anterior no histórico do Daiz-e e ficará identificada como retificada. Se já enviou o recibo, compartilhe a versão corrigida com o destinatário.</div>`}
+<${Paper} r=${{...d,numero}}/><button class="btn" onClick=${confirm}>${editId?'Salvar alterações':'Confirmar emissão'}</button><button class="btn alt" onClick=${()=>go('new')}>Voltar aos dados</button></main>`;
 return html`<${Top} t="Daiz-e"/><main>
-<div class="card hero"><h2>Recibos em segundos</h2><p>${EMI.nome}</p><button class="btn light" onClick=${()=>go('new')}>Emitir novo recibo</button></div>
+<div class="card hero"><h2>Recibos em segundos</h2><p>${EMI.nome}</p><button class="btn light" onClick=${novoRecibo}>Emitir novo recibo</button></div>
 <div class="row"><button class="btn alt" onClick=${()=>go('clients')}>Clientes (${clients.length})</button><button class="btn alt" onClick=${()=>go('hist')}>Histórico (${recs.length})</button></div>
 <button class="btn alt" onClick=${()=>{setEf(EMI);go('emp')}}>${EMI.cnpj?'Dados da imobiliária':'Cadastrar CNPJ da imobiliária'}</button>
 <div class="mut" style="text-align:center">Leitura automática com internet. Recibos manuais disponíveis offline.</div>
