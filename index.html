@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4-hibrido-ocr-online">
+<meta name="daize-version" content="4.1-hibrido-ocr-seguro">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -80,7 +80,7 @@ const cnpjMask=v=>{const d=v.replace(/\D/g,'').slice(0,14);return d.replace(/^(\
 const today=()=>new Date().toISOString().slice(0,10);
 const dbr=s=>s?s.split('-').reverse().join('/'):'';
 const blank=()=>({clienteId:'',nome:'',cpf:'',end:'',valor:0,ref:'',forma:'PIX',data:today()});
-const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${r.ref}.`;
+const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${String(r.ref||'').trim().replace(/[.\s]+$/,'')}.`;
 const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
 
 function wrap(ctx,t,x,y,w,lh){let l='';for(const p of t.split(' ')){const s=l?l+' '+p:p;if(ctx.measureText(s).width>w&&l){ctx.fillText(l,x,y);y+=lh;l=p}else l=s}ctx.fillText(l,x,y);return y+lh}
@@ -206,22 +206,38 @@ async function analisar(f){
 }
 
 /* ---- extração dos dados (nada é inventado: só o que o OCR leu e passou nas validações) ---- */
+/* Os nomes de documentos devem estar associados à etiqueta NOME.
+   Nunca preencher um nome a partir do cabeçalho mais longo do documento. */
 const STL=/\b(REP[UÚ]BLICA|FEDERATIV|BRASIL|CARTEIRA|NACIONAL|HABILITA|IDENTIDADE|MINIST|SECRETARIA|DETRAN|DOCUMENTO|ASSINATURA|V[AÁ]LID|TERRIT|FILIA|REGISTRO|NASCIMENTO|NATURALIDADE|EXPEDI|CATEGORIA|OBSERVA|INSTITUTO|POL[IÍ]CIA|PERMISS|MOTORISTA|ENDERE|VENCIMENTO|ENERGIA|FATURA|CONSUMIDOR)/i;
 const STS=/\b(CPF|CNH|RG|VIA|DATA|PAI|M[AÃ]E|SSP|LOCAL|TOTAL|VALOR|ESTADO|CLIENTE|DOC)\b/i;
 const limpaNome=s=>s.replace(/[^A-Za-zÀ-ÿ'’\s-]/g,' ').replace(/\s+/g,' ').trim();
 const titulo=s=>{const m=['da','de','do','das','dos','e'];return s.toLowerCase().split(' ').map((w,i)=>i&&m.includes(w)?w:w.charAt(0).toUpperCase()+w.slice(1)).join(' ')};
-const nomeOk=s=>{const p=s.split(' ');return p.length>=2&&p.length<=8&&s.length>=7&&s.length<=60&&p.every(w=>w.length>=2||w.toLowerCase()==='e')&&!STL.test(s)&&!STS.test(s)};
+const semAcento=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const CABECALHO_NOME=/(minister|transport|thansport|republic|federativ|brasil|govern|secretari|departament|detran|carteir|nacional|habilit|document|identidad|assinatur|validade|filiac|registr|nasciment|expedic|polici|estado|enderec|cpf|\bcnh\b|\brg\b|categoria|orgao|naturalidade|instituto|nome completo|sobrenome|motorista)/;
+const nomeOk=s=>{
+ const p=s.split(' '),normalizado=semAcento(s);
+ if(p.length<2||p.length>7||s.length<7||s.length>60)return false;
+ if(p.some(w=>w.length<2&&w.toLowerCase()!=='e'))return false;
+ if(p.some(w=>w.length>19))return false;
+ if(STL.test(s)||STS.test(s)||CABECALHO_NOME.test(normalizado))return false;
+ return true;
+};
 function acharNome(L){
  for(let i=0;i<L.length;i++){
+  // Aceita somente o conteúdo ligado a uma etiqueta de nome do titular.
   const m=L[i].match(/^\W*(nome(?!\s+d[ao]\s+(pai|m[aã]e))(\s+completo)?|name|titular|cliente)\b\W*(.*)$/i);
   if(!m)continue;
   let cand=limpaNome(m[4]);
-  if(!nomeOk(cand)){cand='';for(let j=i+1;j<Math.min(i+4,L.length);j++){const t=limpaNome(L[j]);if(nomeOk(t)){cand=t;break}}}
-  if(cand)return titulo(cand);
+  if(nomeOk(cand))return titulo(cand);
+  // Se a etiqueta NOME veio sozinha, examina no máximo as duas linhas seguintes.
+  for(let j=i+1;j<Math.min(i+3,L.length);j++){
+   if(/^\W*(?:cpf|rg|cnh|filia[cç][aã]o|data|nascimento|endere[cç]o|validade|m[aã]e|pai)\b/i.test(L[j]))break;
+   cand=limpaNome(L[j]);
+   if(nomeOk(cand))return titulo(cand);
+  }
  }
- const ex=new Set();L.forEach((l,i)=>{if(/filia|m[aã]e|\bpai\b/i.test(l)){ex.add(i);ex.add(i+1);ex.add(i+2)}});
- let best='';L.forEach((l,i)=>{if(ex.has(i))return;const t=limpaNome(l);if(t===t.toUpperCase()&&nomeOk(t)&&t.length>best.length)best=t});
- return best?titulo(best):'';
+ // Sem etiqueta legível, não arriscar nomes a partir do cabeçalho do documento.
+ return '';
 }
 function acharCPF(t){
  const tn=t.replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8');
@@ -263,7 +279,13 @@ try{
  const txt=r.data.text||'',conf=r.data.confidence||0,pal=txt.split(/\s+/).filter(t=>t.replace(/\W/g,'').length>2).length;
  if(conf<35||pal<8){setPm('Não consegui ler o texto do documento (legibilidade baixa). Tire outra foto, mais perto, com boa luz e sem reflexo.');setPh('bad');return}
  const x=extrair(txt);
- setD(p=>({...p,clienteId:'',nome:x.nome||p.nome,cpf:x.cpf||p.cpf,end:x.end||p.end}));
+ if(!x.nome&&!x.cpf&&!x.end){
+  setPm('O texto foi lido, mas não foi possível identificar nome, CPF ou endereço com segurança. Tire outra foto mais próxima, sem reflexos, ou preencha manualmente.');
+  setPh('bad');return;
+ }
+ // Cada nova fotografia substitui os dados reconhecidos anteriormente.
+ // Nunca misture o CPF de um documento com o nome de outro.
+ setD(p=>({...p,clienteId:'',nome:x.nome||'',cpf:x.cpf||'',end:x.end||''}));
  setRes(x);setPh('read');
 }catch(x){setPm(!navigator.onLine?AVISO_OCR_ONLINE:'Não foi possível reconhecer o documento. Verifique a conexão, tire outra foto ou digite os dados manualmente. Detalhe: '+String(x&&x.message||x));setPh('fail')}};
 const numero=String(recs.length+1).padStart(4,'0');
