@@ -1,5 +1,5 @@
-/* Daiz-e v4.2 · funções principais offline, OCR somente com internet */
-const CACHE='daiz-e-v4-2-recibos-editaveis';
+/* Daiz-e v4.3 · funções principais offline, OCR somente com internet */
+const CACHE='daiz-e-v4-3-validacao-ocr';
 const SCOPE=self.registration.scope;
 const INDEX=new URL('index.html',SCOPE).href;
 const CORE=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];

@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.2-editar-excluir">
+<meta name="daize-version" content="4.3-validacao-ocr">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -236,9 +236,11 @@ const nomeOk=s=>{
 function acharNome(L){
  for(let i=0;i<L.length;i++){
   // Aceita somente o conteúdo ligado a uma etiqueta de nome do titular.
-  const m=L[i].match(/^\W*(nome(?!\s+d[ao]\s+(pai|m[aã]e))(\s+completo)?|name|titular|cliente)\b\W*(.*)$/i);
+  if(/^\W*(?:\d+\s*[.)-]?\s*)?nome\s+d[ao]\s+(?:pai|m[aã]e)\b/i.test(L[i]))continue;
+  // Alguns documentos (CNH e RG) usam "1 NOME E SOBRENOME" ou "NOME COMPLETO".
+  const m=L[i].match(/^\W*(?:\d+\s*[.)-]?\s*)?(?:nome(?:\s+e\s+sobrenome|\s+completo)?|name|titular|cliente)\b\W*(.*)$/i);
   if(!m)continue;
-  let cand=limpaNome(m[4]);
+  let cand=limpaNome(m[1]);
   if(nomeOk(cand))return titulo(cand);
   // Se a etiqueta NOME veio sozinha, examina no máximo as duas linhas seguintes.
   for(let j=i+1;j<Math.min(i+3,L.length);j++){
@@ -258,14 +260,37 @@ function acharCPF(t){
  if(ok.length)return {cpf:cpfMask((ok.find(perto)||ok[0]).d)};
  return {cpf:'',inval:ruins.some(perto)};
 }
+// A leitura do OCR pode gerar sequências sem sentido parecidas com "R. 123".
+// Só aceitar endereço que começa com um tipo de via claramente reconhecido.
+const VIA_INICIO=/^(?:rua|r\.|avenida|av\.?|travessa|tv\.?|alameda|estrada|rodovia|beco|pra[cç]a|conjunto|quadra|loteamento|vila)\s+/i;
+const MARCADOR_END=/(\bcep\b|\d{5}-?\d{3}|manaus|\bAM\b|bairro|centro|\bcidade\b)/i;
+const RUIDO_END=/[=“”"{}\[\]<>|_~\\]/;
+function enderecoPlausivel(s){
+ const t=s.trim().replace(/\s+/g,' ');
+ if(t.length<9||t.length>95||RUIDO_END.test(t))return false;
+ const m=t.match(VIA_INICIO);
+ if(!m)return false; // Não aceitar "IFP R. ...", ou a letra R no meio da linha.
+ const corpo=t.slice(m[0].length).trim();
+ if(!/[A-Za-zÀ-ÿ]{3,}/.test(corpo))return false; // precisa conter nome de via
+ if(!/[\d,]/.test(corpo))return false; // sem número ou separador, confirmar manualmente
+ if(/\b\d{7,}\b/.test(corpo)&&!/\bCEP\b/i.test(corpo))return false;
+ const letras=(corpo.match(/[A-Za-zÀ-ÿ]/g)||[]).length;
+ const chars=corpo.replace(/\s/g,'').length;
+ if(letras<3||letras/Math.max(chars,1)<.28)return false;
+ return true;
+}
 function acharEnd(L){
- const via=/\b(rua|r\.|av\.?|avenida|travessa|tv\.|alameda|estrada|rodovia|beco|pra[cç]a|conjunto|quadra|loteamento|vila)\s/i;
- const cont=/(\bcep\b|\d{5}-?\d{3}|manaus|\bAM\b|bairro|centro|\bcidade\b)/i;
  for(let i=0;i<L.length;i++){
-  const s=L[i].replace(/^\W*(endere[cç]o|logradouro|resid[eê]ncia)\b\W*/i,'');
-  if(!via.test(s+' ')||(!/\d/.test(s)&&!/,/.test(s)))continue;
-  const p=[s];
-  for(let j=i+1;j<Math.min(i+3,L.length);j++){const n=L[j];if(n.length<90&&cont.test(n)&&!via.test(n+' '))p.push(n.replace(/^\W+/,''));else break}
+  const linha=L[i].replace(/^\s*(?:endere[cç]o|logradouro|resid[eê]ncia)\s*[:\-–]?\s*/i,'').trim();
+  if(!enderecoPlausivel(linha))continue;
+  const p=[linha];
+  for(let j=i+1;j<Math.min(i+3,L.length);j++){
+   const cont=L[j].trim();
+   if(cont.length>90||RUIDO_END.test(cont)||!MARCADOR_END.test(cont)||VIA_INICIO.test(cont))break;
+   // Não confundir continuação do endereço com outra seção do documento.
+   if(/\b(?:CPF|RG|CNH|VALIDADE|NASCIMENTO|FILIA[CÇ][AÃ]O|ASSINATURA)\b/i.test(cont))break;
+   p.push(cont.replace(/^\W+/,''));
+  }
   return p.join(' - ').replace(/\s+/g,' ').trim().slice(0,160);
  }
  return '';
@@ -311,7 +336,7 @@ try{
  // Cada nova fotografia substitui os dados reconhecidos anteriormente.
  // Nunca misture o CPF de um documento com o nome de outro.
  setD(p=>({...p,clienteId:'',nome:x.nome||'',cpf:x.cpf||'',end:x.end||''}));
- setRes(x);setPh('read');
+ setRes(x);setPh(x.nome&&x.cpf?'read':'partial');
 }catch(x){setPm(!navigator.onLine?AVISO_OCR_ONLINE:'Não foi possível reconhecer o documento. Verifique a conexão, tire outra foto ou digite os dados manualmente. Detalhe: '+String(x&&x.message||x));setPh('fail')}};
 // Não reutilizar número após exclusão. A maior numeração fica salva separadamente do histórico.
 const maiorNumero=Math.max(ultimoNumero,...recs.map(nRec),...lixeira.map(nRec));
@@ -362,7 +387,7 @@ ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
 <button class="btn" onClick=${saveC}>Salvar cliente</button>
 ${cf.id&&html`<button class="btn alt" onClick=${()=>{setClients(clients.filter(c=>c.id!==cf.id));go('clients')}}>Excluir cliente</button>`}</main>`;
 if(scr==='new')return html`<${Top} t=${(editId?'Editar recibo · Nº ':'Novo recibo · Nº ')+numero} back=${cancelarFormulario}/><main><div class="card f" style="gap:12px">
-<div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando nitidez, resolução e iluminação…</div>`}${ph==='reading'&&html`<div class="mut">Lendo o documento no aparelho… pode levar até 30 segundos.</div>`}${(ph==='bad'||ph==='fail'||ph==='offline')&&html`<div class="err" role="alert">${pm}</div>`}${ph==='read'&&res&&html`<div class="ok"><b>Leitura concluída. Confira e corrija os campos abaixo antes de emitir.</b><br/>Nome: ${res.nome?'lido':'não encontrado'} · CPF: ${res.cpf?'lido e válido':(res.inval?'lido, mas inválido: digite o CPF':'não encontrado')} · Endereço: ${res.end?'lido':'não encontrado neste documento'}</div>`}</div>
+<div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando nitidez, resolução e iluminação…</div>`}${ph==='reading'&&html`<div class="mut">Lendo o documento no aparelho… pode levar até 30 segundos.</div>`}${(ph==='bad'||ph==='fail'||ph==='offline')&&html`<div class="err" role="alert">${pm}</div>`}${(ph==='read'||ph==='partial')&&res&&html`<div class=${ph==='read'?'ok':'err'}><b>${ph==='read'?'Leitura com nome e CPF identificados. Confirme os dados antes de emitir.':'Leitura parcial: confira os dados identificados e preencha manualmente os campos ausentes. Não utilize informações duvidosas.'}</b><br/>Nome: ${res.nome?'lido':'não encontrado'} · CPF: ${res.cpf?'lido e válido':(res.inval?'lido, mas inválido: digite o CPF':'não encontrado')} · Endereço: ${res.end?'lido':'não encontrado neste documento'}</div>`}</div>
 <div class="f"><label>Cliente cadastrado</label><select value=${d.clienteId} onChange=${pick}><option value="">Digitar manualmente</option>${clients.map(c=>html`<option value=${c.id}>${c.nome}</option>`)}</select></div>
 <div class="f"><label>Nome</label><input value=${d.nome} onInput=${setF('nome')}/></div>
 <div class="row"><div class="f"><label>CPF</label><input inputMode="numeric" value=${d.cpf} onInput=${e=>setD({...d,cpf:cpfMask(e.target.value)})}/></div><div class="f"><label>Data</label><input type="date" value=${d.data} onInput=${setF('data')}/></div></div>
