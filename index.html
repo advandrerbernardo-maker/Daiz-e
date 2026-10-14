@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daiz-e · Recibos</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0B2A5B">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#EEF3FC;--sf:#fff;--ink:#0B2247;--mut:#5A6B8C;--line:#D5DFF2;--blue:#1553C7;--navy:#0B2A5B;--tint:#E3ECFB;--wa:#1FA855;--err:#B3261E;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0A1426;--sf:#112041;--ink:#E6EEFF;--mut:#9DB0D6;--line:#23365F;--blue:#5B8CFF;--tint:#182B55;--err:#FF8A80}}
+:root[data-theme="dark"]{--bg:#0A1426;--sf:#112041;--ink:#E6EEFF;--mut:#9DB0D6;--line:#23365F;--blue:#5B8CFF;--tint:#182B55;--err:#FF8A80}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Sora,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
+#root{max-width:480px;margin:0 auto;min-height:100vh}
+.top{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+.top h1{font-size:18px;margin:0;font-weight:700;flex:1}
+.top button{background:rgba(255,255,255,.14);border:0;color:#fff;border-radius:10px;min-width:40px;height:40px;font:inherit;cursor:pointer}
+main{padding:16px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--sf);border:1px solid var(--line);border-radius:14px;padding:16px}
+.hero{background:linear-gradient(150deg,var(--navy),var(--blue));color:#fff;border:0;padding:22px 18px}
+.hero h2{margin:0 0 4px;font-size:22px}.hero p{margin:0 0 16px;opacity:.85}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;border-radius:12px;border:2px solid var(--blue);background:var(--blue);color:#fff;font:600 16px Sora,system-ui,sans-serif;cursor:pointer;padding:10px 14px}
+.btn.alt{background:transparent;color:var(--blue)}
+.btn.wa{background:var(--wa);border-color:var(--wa);min-height:60px;font-size:17px}
+.btn.light{background:#fff;color:var(--navy);border-color:#fff}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.chip:focus-visible{outline:3px solid #7FA8FF;outline-offset:2px}
+label{display:block;font-weight:600;font-size:13px;margin:0 0 5px;color:var(--mut)}
+input,select,textarea{width:100%;min-height:48px;border:1.5px solid var(--line);border-radius:10px;background:var(--sf);color:var(--ink);font:inherit;padding:10px 12px}
+textarea{min-height:92px;resize:vertical}
+.f{display:flex;flex-direction:column}.row{display:flex;gap:10px}.row>*{flex:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--sf);color:var(--ink);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip:disabled{opacity:.5;cursor:not-allowed}
+.li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;width:100%;text-align:left}
+.li:last-child{border-bottom:0}.li small{color:var(--mut);display:block}
+.err{color:var(--err);font-size:13px;font-weight:600}
+.ok{background:var(--tint);border-radius:10px;padding:10px 12px;font-size:13px}
+.mut{color:var(--mut);font-size:13px}.empty{text-align:center;color:var(--mut);padding:18px 6px}
+h3{margin:0 0 10px;font-size:16px}
+.paper{background:#fff;color:#0B2247;border-radius:6px;overflow:hidden;box-shadow:0 2px 14px rgba(11,42,91,.22);font-family:Sora,system-ui,sans-serif}
+.paper .hd{background:#0B2A5B;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-end}
+.paper .hd b{font-size:26px;letter-spacing:.5px}.paper .hd span{font-size:12px;opacity:.85}
+.paper .bd{padding:18px}.paper .val{background:#E3ECFB;border-left:5px solid #1553C7;padding:10px 14px;font-size:22px;font-weight:700;margin-bottom:14px}
+.paper p{margin:0 0 12px;line-height:1.6;font-size:14px}.paper .sg{margin-top:34px;border-top:1.5px solid #0B2A5B;padding-top:6px;text-align:center;font-size:12px;width:70%;margin-left:auto;margin-right:auto}
+@media screen{.print{display:none}}
+@media print{body *{visibility:hidden}.print,.print *{visibility:visible}.print{position:absolute;left:0;top:0;width:100%}}
+</style>
+</head>
+<body>
+<div id="root"><p style="padding:20px">Carregando Daiz-e…</p></div>
+<script>window.onerror=function(m,s,l){var r=document.getElementById('root');if(r)r.insertAdjacentHTML('beforeend','<pre style="padding:12px;color:#b3261e;white-space:pre-wrap">Erro: '+m+' (linha '+(l||'?')+')</pre>')}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const _h=window.htm&&(window.htm.default||window.htm);if(!window.React||!window.ReactDOM||!_h){document.getElementById('root').innerHTML='<p style="padding:20px">Não foi possível carregar as bibliotecas. Faltando: '+[!window.React&&'React',!window.ReactDOM&&'ReactDOM',!_h&&'htm'].filter(Boolean).join(', ')+'</p>';throw new Error('libs')}
+const {useState,useEffect}=React;const sty=s=>Object.fromEntries(s.split(';').filter(x=>x.includes(':')).map(x=>{const i=x.indexOf(':');return[x.slice(0,i).trim().replace(/-([a-z])/g,(m,c)=>c.toUpperCase()),x.slice(i+1).trim()]}));
+const h=(t,p,...c)=>React.createElement(t,p&&typeof p.style==='string'?{...p,style:sty(p.style)}:p,...c);
+const html=_h.bind(h);
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const brl=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const cpfMask=v=>{const d=v.replace(/\D/g,'').slice(0,11);return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')};
+const U=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'],T=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'],H=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+const n3=n=>{if(n===100)return 'cem';const h=Math.floor(n/100),r=n%100,p=[];if(h)p.push(H[h]);if(r)p.push(r<20?U[r]:T[Math.floor(r/10)]+(r%10?' e '+U[r%10]:''));return p.join(' e ')};
+const ext=c=>{const R=Math.floor(c/100),C=c%100,p=[];if(R){const m=Math.floor(R/1e6),k=Math.floor(R/1000)%1000,u=R%1000,s=[];if(m)s.push(n3(m)+(m>1?' milhões':' milhão'));if(k)s.push(k===1?'mil':n3(k)+' mil');if(u)s.push(n3(u));p.push(s.join(' e ')+(R===1?' real':' reais'))}if(C)p.push(n3(C)+(C===1?' centavo':' centavos'));return p.join(' e ')||'zero real'};
+const cpfOk=v=>{const d=v.replace(/\D/g,'');if(d.length!==11||/^(\d)\1+$/.test(d))return false;for(const n of [9,10]){let s=0;for(let i=0;i<n;i++)s+=d[i]*(n+1-i);if((s*10%11)%10!=d[n])return false}return true};
+const blur=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const w=400,h=Math.round(i.height*w/i.width),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(i,0,0,w,h);const p=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let k=0;k<w*h;k++)g[k]=.3*p[4*k]+.59*p[4*k+1]+.11*p[4*k+2];let s=0,s2=0,n=0;for(let y=1;y<h-1;y++)for(let q=1;q<w-1;q++){const v=4*g[y*w+q]-g[y*w+q-1]-g[y*w+q+1]-g[(y-1)*w+q]-g[(y+1)*w+q];s+=v;s2+=v*v;n++}URL.revokeObjectURL(i.src);ok(s2/n-(s/n)*(s/n))};i.onerror=no;i.src=URL.createObjectURL(f)});
+const EM0={nome:'Imóveis Manaus Imobiliária',rs:'Daize do S S Avelar',cnpj:'23.046.404/0001-11',end:'Rua 24 de Maio, 410 - Centro, Manaus - AM, 69.010-080'};let EMI={...EM0,...ls.get('dz-e',{})};const E=r=>r.em||EMI;
+const cnpjMask=v=>{const d=v.replace(/\D/g,'').slice(0,14);return d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')};
+const today=()=>new Date().toISOString().slice(0,10);
+const dbr=s=>s?s.split('-').reverse().join('/'):'';
+const blank=()=>({clienteId:'',nome:'',cpf:'',end:'',valor:0,ref:'',forma:'PIX',data:today()});
+const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${r.ref}.`;
+const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
+
+function wrap(ctx,t,x,y,w,lh){let l='';for(const p of t.split(' ')){const s=l?l+' '+p:p;if(ctx.measureText(s).width>w&&l){ctx.fillText(l,x,y);y+=lh;l=p}else l=s}ctx.fillText(l,x,y);return y+lh}
+function draw(r){const W=900,H=1100,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#0B2A5B';x.fillRect(0,0,W,170);
+x.fillStyle='#fff';x.font='700 58px Sora,Arial,sans-serif';x.fillText('RECIBO',50,98);x.font='24px Sora,Arial,sans-serif';x.fillText(E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''),50,138);
+x.textAlign='right';x.font='600 26px Sora,Arial,sans-serif';x.fillText('Nº '+r.numero,W-50,98);x.font='22px Sora,Arial,sans-serif';x.fillText(dbr(r.data),W-50,138);x.textAlign='left';
+x.fillStyle='#E3ECFB';x.fillRect(50,220,W-100,100);x.fillStyle='#1553C7';x.fillRect(50,220,10,100);
+x.fillStyle='#0B2247';x.font='700 50px Sora,Arial,sans-serif';x.fillText(brl(r.valor),90,288);
+x.font='28px Sora,Arial,sans-serif';let y=400;y=wrap(x,body(r),50,y,W-100,48);
+y+=14;x.fillStyle='#5A6B8C';x.font='24px Sora,Arial,sans-serif';x.fillText('Forma de pagamento: '+r.forma,50,y);
+x.fillStyle='#0B2247';x.fillText('Manaus, '+dbr(r.data),50,y+70);
+x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.font='22px Sora,Arial,sans-serif';x.fillText(E(r).nome,W/2,H-155);x.font='19px Sora,Arial,sans-serif';const l2=(E(r).rs?E(r).rs+' · ':'')+(E(r).cnpj?'CNPJ '+E(r).cnpj:'');if(l2)x.fillText(l2,W/2,H-125);if(E(r).end)x.fillText(E(r).end,W/2,H-98);return c}
+async function build(r,fmt){const c=draw(r),nm='recibo-'+r.numero;
+if(fmt==='pdf'){if(!window.jspdf)throw new Error('pdf');const d=new window.jspdf.jsPDF({unit:'pt',format:'a4'});d.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,595,595*c.height/c.width);return new File([d.output('blob')],nm+'.pdf',{type:'application/pdf'})}
+if(fmt==='docx'){if(!window.JSZip)throw new Error('docx');const z=new JSZip(),e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;'),P=(t,o={})=>`<w:p><w:pPr>${o.f?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.f+'"/>':''}</w:pPr><w:r><w:rPr>${o.b?'<w:b/>':''}<w:color w:val="${o.c||'0B2247'}"/><w:sz w:val="${o.sz||24}"/></w:rPr><w:t xml:space="preserve">${e(t)}</w:t></w:r></w:p>`;
+const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+P(E(r).nome+(E(r).rs?' ('+E(r).rs+')':'')+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''))+P(E(r).end||'');
+z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+dc+'</w:body></w:document>');
+const b=await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});return new File([b],nm+'.docx',{type:b.type})}
+const t=fmt==='png'?'image/png':'image/jpeg';const b=await new Promise(ok=>c.toBlob(ok,t,.92));if(!b)throw new Error('img');return new File([b],nm+'.'+(fmt==='png'?'png':'jpg'),{type:t})}
+async function save(f){try{const d=window.claude&&await window.claude.use('downloads');if(d){await d.save({filename:f.name,data:f});return}}catch(e){if(e&&e.code==='declined')return}
+const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove()}
+
+const Paper=({r})=>html`<div class="paper"><div class="hd"><div><b>RECIBO</b><br/><span>${E(r).nome}${E(r).cnpj?' · CNPJ '+E(r).cnpj:''}</span></div><div style="text-align:right"><b style="font-size:16px">Nº ${r.numero}</b><br/><span>${dbr(r.data)}</span></div></div>
+<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p><div class="sg">${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
+const Top=({t,back})=>html`<div class="top">${back&&html`<button onClick=${back} aria-label="Voltar">←</button>`}<h1>${t}</h1></div>`;
+const Share=()=>html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
+
+function Done({r,go}){
+const [fmt,setFmt]=useState('pdf'),[file,setFile]=useState(null),[busy,setBusy]=useState(true),[err,setErr]=useState(''),[note,setNote]=useState(''),[msg,setMsg]=useState(MSG),[show,setShow]=useState(false);
+useEffect(()=>{let off=false;setBusy(true);setErr('');setFile(null);build(r,fmt).then(f=>{if(!off){setFile(f);setBusy(false)}}).catch(()=>{if(!off){setErr('Não foi possível gerar o arquivo. Seus dados foram mantidos; tente outro formato.');setBusy(false)}});return()=>{off=true}},[fmt,r.id]);
+const copy=async()=>{try{await navigator.clipboard.writeText(msg);setNote('Mensagem copiada. Cole na conversa do WhatsApp.')}catch(e){setNote('Não foi possível copiar automaticamente. Selecione o texto da mensagem e copie manualmente.')}};
+const share=async()=>{if(!file)return;setNote('');
+try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],text:msg});setNote('O menu de compartilhamento foi concluído. Confirme no WhatsApp se a mensagem foi enviada — o Daiz-e não consegue verificar a entrega.')}
+else{save(file);setNote('Este navegador não compartilha arquivos. O recibo foi baixado: abra o WhatsApp, toque em anexar (clipe) e escolha o arquivo. Use “Copiar mensagem” para o texto.')}}
+catch(e){if(e&&e.name==='AbortError')setNote('Compartilhamento cancelado. Nada foi enviado.');else{setErr('O compartilhamento falhou. Baixe o arquivo e anexe manualmente no WhatsApp.')}}};
+const pdf=async()=>{try{save(fmt==='pdf'&&file?file:await build(r,'pdf'))}catch(e){setErr('Não foi possível gerar o PDF.')}};
+const prt=()=>{try{window.print()}catch(e){setErr('A impressão não está disponível neste ambiente. Baixe o PDF e imprima por ele.')}};
+return html`<${Top} t="Recibo pronto" back=${()=>go('home')}/><main>
+<div class="card hero"><h2>RECIBO PRONTO</h2><p>Nº ${r.numero} · ${brl(r.valor)} · ${r.nome}</p></div>
+<div class="card"><label>Formato do arquivo</label><div class="chips">${[['pdf','PDF'],['png','PNG'],['jpeg','JPEG'],['docx','DOCX']].map(([k,n])=>html`<button class=${'chip'+(fmt===k?' on':'')} onClick=${()=>setFmt(k)}>${n}</button>`)}</div>
+<div class="f" style="margin-top:14px"><label>Mensagem (opcional)</label><textarea value=${msg} onInput=${e=>setMsg(e.target.value)}></textarea></div>
+<button class="btn alt" style="margin-top:10px;min-height:44px" onClick=${copy}>Copiar mensagem</button></div>
+<button class="btn wa" disabled=${busy||!file} onClick=${share}><${Share}/>${busy?'Preparando arquivo…':'COMPARTILHAR VIA WHATSAPP'}</button>
+${err&&html`<div class="err" role="alert">${err}</div>`}${note&&html`<div class="ok" role="status">${note}</div>`}
+${show&&html`<${Paper} r=${r}/>`}
+<button class="btn alt" onClick=${()=>setShow(!show)}>${show?'Ocultar recibo':'Visualizar recibo'}</button>
+<button class="btn alt" onClick=${pdf}>Baixar PDF</button>
+${fmt!=='pdf'&&html`<button class="btn alt" disabled=${busy||!file} onClick=${()=>save(file)}>Baixar ${fmt.toUpperCase()}</button>`}
+<button class="btn alt" onClick=${prt}>Imprimir</button>
+<button class="btn" onClick=${()=>go('home')}>Voltar ao início</button>
+<div class="print"><${Paper} r=${r}/></div></main>`}
+
+function App(){
+const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI);
+useEffect(()=>ls.set('dz-c',clients),[clients]);useEffect(()=>ls.set('dz-r',recs),[recs]);useEffect(()=>ls.set('dz-t',tp),[tp]);
+const go=s=>{setErr('');setScr(s)};
+const shrink=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const k=Math.min(1,2000/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(i.src);c.toBlob(b=>b?ok(b):no(),'image/jpeg',.85)};i.onerror=no;i.src=URL.createObjectURL(f)});
+const onPhoto=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;setPh('busy');
+try{const bl=await blur(f).catch(()=>99);
+const s=window.claude&&await window.claude.use('sample');if(!s){setPh('nosample');return}
+setPh('reading');const b=await shrink(f);
+const o=await s.json('Extraia os dados deste documento brasileiro (RG, CNH, CPF ou comprovante de endereço). Responda SOMENTE com JSON no formato {"nome":"","cpf":"","end":""}. Use "" para o que não estiver legível. A foto pode estar inclinada, escura ou com reflexo: leia com o máximo de esforço. Não invente dados.',{images:[b],cache:false,modelTier:'default'});
+const n=String(o.nome||'').trim(),c=cpfMask(String(o.cpf||'')),a=String(o.end||'').trim();
+if(!n&&!c&&!a){setPh(bl<30?'bad':'empty');return}
+setD(p=>({...p,clienteId:'',nome:n||p.nome,cpf:c||p.cpf,end:a||p.end}));setPh('read')}
+catch(x){setPh(x&&x.code==='not_granted'?'denied':'fail')}};
+const numero=String(recs.length+1).padStart(4,'0');
+const setF=k=>e=>setD({...d,[k]:e.target.value});
+const pick=e=>{const c=clients.find(x=>x.id===e.target.value);setD(c?{...d,clienteId:c.id,nome:c.nome,cpf:c.cpf,end:c.end}:{...d,clienteId:''})};
+const saveC=()=>{if(!cf.nome.trim()){setErr('Informe o nome do cliente.');return}setClients(cf.id?clients.map(c=>c.id===cf.id?cf:c):[...clients,{...cf,id:'c'+Date.now()}]);go('clients')};
+const review=()=>{if(!d.nome.trim())return setErr('Informe o nome do cliente.');if(d.cpf&&!cpfOk(d.cpf))return setErr('CPF inválido. Confira os números.');if(!d.valor)return setErr('Informe o valor.');if(!d.ref.trim())return setErr('Preencha o campo “Referente a”.');go('review')};
+const confirm=()=>{const r={...d,id:'r'+Date.now(),numero,em:EMI};setRecs([r,...recs]);setCur(r);setD(blank());go('done')};
+
+if(scr==='done'&&cur)return html`<${Done} r=${cur} go=${go}/>`;
+if(scr==='emp')return html`<${Top} t="Dados da imobiliária" back=${()=>go('home')}/><main><div class="card f" style="gap:12px"><div class="f"><label>Nome da imobiliária</label><input value=${ef.nome} onInput=${e=>setEf({...ef,nome:e.target.value})}/></div><div class="f"><label>Razão social</label><input value=${ef.rs||''} onInput=${e=>setEf({...ef,rs:e.target.value})}/></div><div class="f"><label>CNPJ</label><input inputMode="numeric" placeholder="00.000.000/0000-00" value=${ef.cnpj} onInput=${e=>setEf({...ef,cnpj:cnpjMask(e.target.value)})}/></div><div class="f"><label>Endereço e telefone (opcional)</label><input value=${ef.end} onInput=${e=>setEf({...ef,end:e.target.value})}/></div><div class="mut">Esses dados saem em todos os recibos novos.</div>${err&&html`<div class="err" role="alert">${err}</div>`}</div><button class="btn" onClick=${()=>{if(!ef.nome.trim())return setErr('Informe o nome da imobiliária.');EMI=ef;ls.set('dz-e',ef);setEm(ef);go('home')}}>Salvar dados</button></main>`;
+if(scr==='hist'){const L=recs.filter(r=>(r.nome+r.ref+r.numero).toLowerCase().includes(q.toLowerCase()));return html`<${Top} t="Histórico" back=${()=>go('home')}/><main><input placeholder="Buscar por nome, número ou assunto" value=${q} onInput=${e=>setQ(e.target.value)}/><div class="card">${L.length?L.map(r=>html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></button>`):html`<div class="empty">Nenhum recibo encontrado.</div>`}</div></main>`}
+if(scr==='clients')return html`<${Top} t="Clientes" back=${()=>go('home')}/><main>
+<button class="btn" onClick=${()=>{setCf({nome:'',cpf:'',tel:'',end:''});go('client')}}>+ Novo cliente</button>
+<div class="card">${clients.length?clients.map(c=>html`<button class="li" onClick=${()=>{setCf(c);go('client')}}><span>${c.nome}<small>${c.cpf||'Sem CPF'}</small></span><span class="mut">Editar</span></button>`):html`<div class="empty">Nenhum cliente ainda. Cadastre o primeiro para preencher recibos mais rápido.</div>`}</div></main>`;
+if(scr==='client'&&cf)return html`<${Top} t=${cf.id?'Editar cliente':'Novo cliente'} back=${()=>go('clients')}/><main><div class="card f" style="gap:12px">
+<div class="f"><label>Nome completo</label><input value=${cf.nome} onInput=${e=>setCf({...cf,nome:e.target.value})}/></div>
+<div class="f"><label>CPF</label><input inputMode="numeric" placeholder="000.000.000-00" value=${cf.cpf} onInput=${e=>setCf({...cf,cpf:cpfMask(e.target.value)})}/></div>
+<div class="f"><label>Telefone</label><input inputMode="tel" value=${cf.tel} onInput=${e=>setCf({...cf,tel:e.target.value})}/></div>
+<div class="f"><label>Endereço</label><input value=${cf.end} onInput=${e=>setCf({...cf,end:e.target.value})}/></div>
+${err&&html`<div class="err" role="alert">${err}</div>`}</div>
+<button class="btn" onClick=${saveC}>Salvar cliente</button>
+${cf.id&&html`<button class="btn alt" onClick=${()=>{setClients(clients.filter(c=>c.id!==cf.id));go('clients')}}>Excluir cliente</button>`}</main>`;
+if(scr==='new')return html`<${Top} t=${'Novo recibo · Nº '+numero} back=${()=>go('home')}/><main><div class="card f" style="gap:12px">
+<div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando foto…</div>`}${ph==='bad'&&html`<div class="err" role="alert">Não consegui ler: a foto parece desfocada ou escura. Tire outra com boa luz, sem reflexo e com o celular firme.</div>`}${ph==='reading'&&html`<div class="mut">Lendo os dados do documento…</div>`}${ph==='read'&&html`<div class="ok">Dados lidos da foto e preenchidos abaixo. Confira nome, CPF e endereço antes de emitir.</div>`}${ph==='empty'&&html`<div class="err" role="alert">Não consegui ler dados nessa foto. Tente outra mais nítida ou preencha manualmente.</div>`}${ph==='nosample'&&html`<div class="err" role="alert">A leitura automática não está disponível nesta visualização. Preencha manualmente.</div>`}${ph==='denied'&&html`<div class="err" role="alert">Permissão negada para ler a foto. Preencha manualmente.</div>`}${ph==='fail'&&html`<div class="err" role="alert">Não foi possível ler a foto agora. Tente novamente ou preencha manualmente.</div>`}</div>
+<div class="f"><label>Cliente cadastrado</label><select value=${d.clienteId} onChange=${pick}><option value="">Digitar manualmente</option>${clients.map(c=>html`<option value=${c.id}>${c.nome}</option>`)}</select></div>
+<div class="f"><label>Nome</label><input value=${d.nome} onInput=${setF('nome')}/></div>
+<div class="row"><div class="f"><label>CPF</label><input inputMode="numeric" value=${d.cpf} onInput=${e=>setD({...d,cpf:cpfMask(e.target.value)})}/></div><div class="f"><label>Data</label><input type="date" value=${d.data} onInput=${setF('data')}/></div></div>
+<div class="f"><label>Endereço</label><input value=${d.end} onInput=${setF('end')}/></div>
+<div class="f"><label>Valor</label><input inputMode="numeric" placeholder="R$ 0,00" value=${d.valor?brl(d.valor):''} onInput=${e=>setD({...d,valor:Number(e.target.value.replace(/\D/g,'')||0)})}/></div>
+<div class="f"><label>Referente a</label><input value=${d.ref} onInput=${setF('ref')} placeholder="Ex.: aluguel de outubro/2026"/></div>
+<div class="chips">${['Aluguel','Caução','Taxa de administração','Condomínio'].map(t=>html`<button class="chip" onClick=${()=>setD({...d,ref:t})}>${t}</button>`)}</div>
+<div class="chips">${tp.map(t=>html`<button class="chip" onClick=${()=>setD({...d,ref:t.ref,forma:t.forma,valor:t.valor})}>★ ${t.ref}</button>`)}<button class="chip" onClick=${()=>d.ref.trim()?setTp([...tp.filter(t=>t.ref!==d.ref),{ref:d.ref,forma:d.forma,valor:d.valor}]):setErr('Preencha “Referente a” para salvar o modelo.')}>Salvar como modelo</button></div>
+<div class="f"><label>Forma de pagamento</label><select value=${d.forma} onChange=${setF('forma')}>${['PIX','Dinheiro','Transferência','Cartão','Boleto'].map(f=>html`<option>${f}</option>`)}</select></div>
+${err&&html`<div class="err" role="alert">${err}</div>`}</div>
+<button class="btn" onClick=${review}>Revisar recibo</button></main>`;
+if(scr==='review')return html`<${Top} t="Conferir recibo" back=${()=>go('new')}/><main>${!EMI.cnpj&&html`<div class="err" role="alert">O CNPJ da imobiliária não está cadastrado e não vai aparecer no recibo. Cadastre na tela inicial.</div>`}<${Paper} r=${{...d,numero}}/><button class="btn" onClick=${confirm}>Confirmar emissão</button><button class="btn alt" onClick=${()=>go('new')}>Editar dados</button></main>`;
+return html`<${Top} t="Daiz-e"/><main>
+<div class="card hero"><h2>Recibos em segundos</h2><p>${EMI.nome}</p><button class="btn light" onClick=${()=>go('new')}>Emitir novo recibo</button></div>
+<div class="row"><button class="btn alt" onClick=${()=>go('clients')}>Clientes (${clients.length})</button><button class="btn alt" onClick=${()=>go('hist')}>Histórico (${recs.length})</button></div>
+<button class="btn alt" onClick=${()=>{setEf(EMI);go('emp')}}>${EMI.cnpj?'Dados da imobiliária':'Cadastrar CNPJ da imobiliária'}</button>
+<div class="card"><h3>Últimos recibos</h3>${recs.length?recs.slice(0,6).map(r=>html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></button>`):html`<div class="empty">Nenhum recibo emitido. Toque em “Emitir novo recibo” para começar.</div>`}</div></main>`}
+class EB extends React.Component{constructor(p){super(p);this.state={e:null}}static getDerivedStateFromError(e){return{e}}render(){const e=this.state.e;return e?React.createElement('pre',{style:{padding:12,color:'#b3261e',whiteSpace:'pre-wrap'}},'Erro: '+e.message+'\n'+String(e.stack||'').slice(0,700)):this.props.children}}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(EB,null,React.createElement(App)));
+</script>
+<script>if('serviceWorker' in navigator)addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})</script>
+</body>
+</html>
