@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.5-rodape-creci">
+<meta name="daize-version" content="4.5.1-creci-pj-sem-quebra">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -56,7 +56,7 @@ h3{margin:0 0 10px;font-size:16px}
 .paper .hd{background:#0B2A5B;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-end}
 .paper .hd b{font-size:26px;letter-spacing:.5px}.paper .hd span{font-size:12px;opacity:.85}
 .paper .bd{padding:18px}.paper .val{background:#E3ECFB;border-left:5px solid #1553C7;padding:10px 14px;font-size:22px;font-weight:700;margin-bottom:14px}
-.paper p{margin:0 0 12px;line-height:1.6;font-size:14px}.paper .sg{margin-top:24px;text-align:center;font-size:12px;width:70%;margin-left:auto;margin-right:auto}.paper .sig-img{display:block;width:190px;max-width:88%;height:62px;object-fit:contain;margin:0 auto 1px}.paper .sig-line{border-top:1.5px solid #0B2A5B;padding-top:6px}
+.paper p{margin:0 0 12px;line-height:1.6;font-size:14px}.paper .sg{margin-top:24px;text-align:center;font-size:12px;width:70%;margin-left:auto;margin-right:auto}.paper .sig-img{display:block;width:190px;max-width:88%;height:62px;object-fit:contain;margin:0 auto 1px}.paper .sig-line{border-top:1.5px solid #0B2A5B;padding-top:6px}.paper .sg .sig-line+div{white-space:nowrap;font-size:clamp(8px,2.6vw,11px)}
 @media screen{.print{display:none}}
 @media print{body *{visibility:hidden}.print,.print *{visibility:visible}.print{position:absolute;left:0;top:0;width:100%}}
 </style>
@@ -121,7 +121,7 @@ const blank=()=>({clienteId:'',nome:'',cpf:'',end:'',valor:0,ref:'',forma:'PIX',
 const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${String(r.ref||'').trim().replace(/[.\s]+$/,'')}.`;
 const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
 // Dados de registro no rodapé, seguindo a ordem informada pela imobiliária.
-const linhasRodape=r=>[E(r).nome+' - CRECI PJ 438','Daize Santiago - CRECI PF 3317',...(E(r).end?[E(r).end]:[]),...(E(r).cnpj?['CNPJ '+E(r).cnpj]:[])];
+const linhasRodape=r=>[E(r).nome+' - CRECI PJ\u00A0438','Daize Santiago - CRECI PF 3317',...(E(r).end?[E(r).end]:[]),...(E(r).cnpj?['CNPJ '+E(r).cnpj]:[])];
 
 function wrap(ctx,t,x,y,w,lh){let l='';for(const p of t.split(' ')){const s=l?l+' '+p:p;if(ctx.measureText(s).width>w&&l){ctx.fillText(l,x,y);y+=lh;l=p}else l=s}ctx.fillText(l,x,y);return y+lh}
 async function draw(r){const W=900,H=1100,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
