@@ -1,5 +1,5 @@
-/* Daiz-e v4.4 · assinatura privada nos recibos, OCR online */
-const CACHE='daiz-e-v4-4-assinatura-local-20261018';
+/* Daiz-e v4.5 · rodapé com CRECI PJ/PF e CNPJ em último, assinatura privada preservada */
+const CACHE='daiz-e-v4-5-creci-20261018';
 const SCOPE=self.registration.scope;
 const INDEX=new URL('index.html',SCOPE).href;
 const CORE=['./','index.html','manifest.webmanifest','icon-192.png?v=d2-20261014','icon-512.png?v=d2-20261014','icon-maskable-512.png?v=d2-20261014'];
