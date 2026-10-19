@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.3-validacao-ocr">
+<meta name="daize-version" content="4.4-assinatura-privada">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -56,7 +56,7 @@ h3{margin:0 0 10px;font-size:16px}
 .paper .hd{background:#0B2A5B;color:#fff;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-end}
 .paper .hd b{font-size:26px;letter-spacing:.5px}.paper .hd span{font-size:12px;opacity:.85}
 .paper .bd{padding:18px}.paper .val{background:#E3ECFB;border-left:5px solid #1553C7;padding:10px 14px;font-size:22px;font-weight:700;margin-bottom:14px}
-.paper p{margin:0 0 12px;line-height:1.6;font-size:14px}.paper .sg{margin-top:34px;border-top:1.5px solid #0B2A5B;padding-top:6px;text-align:center;font-size:12px;width:70%;margin-left:auto;margin-right:auto}
+.paper p{margin:0 0 12px;line-height:1.6;font-size:14px}.paper .sg{margin-top:24px;text-align:center;font-size:12px;width:70%;margin-left:auto;margin-right:auto}.paper .sig-img{display:block;width:190px;max-width:88%;height:62px;object-fit:contain;margin:0 auto 1px}.paper .sig-line{border-top:1.5px solid #0B2A5B;padding-top:6px}
 @media screen{.print{display:none}}
 @media print{body *{visibility:hidden}.print,.print *{visibility:visible}.print{position:absolute;left:0;top:0;width:100%}}
 </style>
@@ -75,6 +75,35 @@ const {useState,useEffect}=React;const sty=s=>Object.fromEntries(s.split(';').fi
 const h=(t,p,...c)=>React.createElement(t,p&&typeof p.style==='string'?{...p,style:sty(p.style)}:p,...c);
 const html=_h.bind(h);
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+const CHAVE_ASSINATURA='dz-assinatura-local-v1';
+const carregarAssinatura=()=>new Promise(ok=>{
+ const data=ls.get(CHAVE_ASSINATURA,'');if(!data){ok(null);return}
+ const img=new Image();img.onload=()=>ok(img);img.onerror=()=>ok(null);img.src=data;
+});
+async function recortarAssinatura(file){
+ if(!file||!file.type.startsWith('image/'))throw Error('Selecione uma imagem.');
+ const url=URL.createObjectURL(file);
+ let img;try{img=await new Promise((ok,no)=>{const o=new Image();o.onload=()=>ok(o);o.onerror=()=>no(Error('Imagem inválida'));o.src=url})}finally{URL.revokeObjectURL(url)}
+ const scale=Math.min(1,1000/Math.max(img.naturalWidth,img.naturalHeight));
+ const c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,c.width,c.height);
+ const w=c.width,h=c.height,d=x.getImageData(0,0,w,h).data;
+ let x1=w,y1=h,x2=0,y2=0,n=0;
+ for(let y=Math.floor(h*.1);y<Math.floor(h*.9);y++)for(let k=Math.floor(w*.03);k<Math.floor(w*.97);k++){
+ const j=(y*w+k)*4,r=d[j],g=d[j+1],b=d[j+2];
+ if(b-r>13&&b-g>7&&r<180){x1=Math.min(x1,k);x2=Math.max(x2,k);y1=Math.min(y1,y);y2=Math.max(y2,y);n++}
+ }
+ if(n<80||x2-x1<45||y2-y1<12)throw Error('Não consegui identificar a assinatura azul. Envie uma foto nítida em papel claro.');
+ x1=Math.max(0,x1-12);y1=Math.max(0,y1-12);x2=Math.min(w-1,x2+12);y2=Math.min(h-1,y2+12);
+ const bw=x2-x1+1,bh=y2-y1+1,z=x.getImageData(x1,y1,bw,bh);
+ for(let i=0;i<z.data.length;i+=4){
+ const r=z.data[i],g=z.data[i+1],b=z.data[i+2];
+ z.data[i]=29;z.data[i+1]=48;z.data[i+2]=119;z.data[i+3]=Math.max(0,Math.min(255,(Math.min(b-r-3,b-g-2))*13));
+ }
+ const out=document.createElement('canvas');out.width=bw;out.height=bh;out.getContext('2d').putImageData(z,0,0);return out.toDataURL('image/png');
+}
+
 const brl=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const cpfMask=v=>{const d=v.replace(/\D/g,'').slice(0,11);return d.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2')};
 const U=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'],T=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'],H=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
@@ -93,7 +122,7 @@ const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente
 const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
 
 function wrap(ctx,t,x,y,w,lh){let l='';for(const p of t.split(' ')){const s=l?l+' '+p:p;if(ctx.measureText(s).width>w&&l){ctx.fillText(l,x,y);y+=lh;l=p}else l=s}ctx.fillText(l,x,y);return y+lh}
-function draw(r){const W=900,H=1100,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+async function draw(r){const W=900,H=1100,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
 x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#0B2A5B';x.fillRect(0,0,W,170);
 x.fillStyle='#fff';x.font='700 58px Sora,Arial,sans-serif';x.fillText('RECIBO',50,98);x.font='24px Sora,Arial,sans-serif';x.fillText(E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''),50,138);
 x.textAlign='right';x.font='600 26px Sora,Arial,sans-serif';x.fillText('Nº '+r.numero,W-50,98);x.font='22px Sora,Arial,sans-serif';x.fillText(dbr(r.data),W-50,138);x.textAlign='left';
@@ -102,8 +131,10 @@ x.fillStyle='#0B2247';x.font='700 50px Sora,Arial,sans-serif';x.fillText(brl(r.v
 x.font='28px Sora,Arial,sans-serif';let y=400;y=wrap(x,body(r),50,y,W-100,48);
 y+=14;x.fillStyle='#5A6B8C';x.font='24px Sora,Arial,sans-serif';x.fillText('Forma de pagamento: '+r.forma,50,y);
 x.fillStyle='#0B2247';x.fillText('Manaus, '+dbr(r.data),50,y+70);
+const assinaturaImagem=await carregarAssinatura();
+if(assinaturaImagem){const k=Math.min(300/assinaturaImagem.width,86/assinaturaImagem.height);const ww=assinaturaImagem.width*k,hh=assinaturaImagem.height*k;x.drawImage(assinaturaImagem,(W-ww)/2,H-194-hh,ww,hh)}
 x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.font='22px Sora,Arial,sans-serif';x.fillText(E(r).nome,W/2,H-155);x.font='19px Sora,Arial,sans-serif';const l2=(E(r).rs?E(r).rs+' · ':'')+(E(r).cnpj?'CNPJ '+E(r).cnpj:'');if(l2)x.fillText(l2,W/2,H-125);if(E(r).end)x.fillText(E(r).end,W/2,H-98);if(r.revisadoEm){x.fillStyle='#5A6B8C';x.font='16px Sora,Arial,sans-serif';x.fillText('Recibo retificado em '+stampBR(r.revisadoEm),W/2,H-65)}return c}
-async function build(r,fmt){const c=draw(r),nm='recibo-'+r.numero;
+async function build(r,fmt){const c=await draw(r),nm='recibo-'+r.numero;
 if(fmt==='pdf'){if(!window.jspdf)throw new Error('pdf');const d=new window.jspdf.jsPDF({unit:'pt',format:'a4'});d.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,595,595*c.height/c.width);return new File([d.output('blob')],nm+'.pdf',{type:'application/pdf'})}
 if(fmt==='docx'){if(!window.JSZip)throw new Error('docx');const z=new JSZip(),e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;'),P=(t,o={})=>`<w:p><w:pPr>${o.f?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.f+'"/>':''}</w:pPr><w:r><w:rPr>${o.b?'<w:b/>':''}<w:color w:val="${o.c||'0B2247'}"/><w:sz w:val="${o.sz||24}"/></w:rPr><w:t xml:space="preserve">${e(t)}</w:t></w:r></w:p>`;
 const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+P(E(r).nome+(E(r).rs?' ('+E(r).rs+')':'')+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''))+P(E(r).end||'')+(r.revisadoEm?P('Recibo retificado em '+stampBR(r.revisadoEm)): '');
@@ -116,7 +147,7 @@ async function save(f){try{const d=window.claude&&await window.claude.use('downl
 const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove()}
 
 const Paper=({r})=>html`<div class="paper"><div class="hd"><div><b>RECIBO</b><br/><span>${E(r).nome}${E(r).cnpj?' · CNPJ '+E(r).cnpj:''}</span></div><div style="text-align:right"><b style="font-size:16px">Nº ${r.numero}</b><br/><span>${dbr(r.data)}</span></div></div>
-<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p>${r.revisadoEm&&html`<p style="font-size:11px;color:#5A6B8C">Recibo retificado em ${stampBR(r.revisadoEm)}.</p>`}<div class="sg">${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
+<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p>${r.revisadoEm&&html`<p style="font-size:11px;color:#5A6B8C">Recibo retificado em ${stampBR(r.revisadoEm)}.</p>`}<div class="sg">${ls.get(CHAVE_ASSINATURA,'')&&html`<img class="sig-img" alt="Assinatura" src=${ls.get(CHAVE_ASSINATURA,'')}/>`}<div class="sig-line"></div>${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
 const Top=({t,back})=>html`<div class="top">${back&&html`<button onClick=${back} aria-label="Voltar">←</button>`}<h1>${t}</h1></div>`;
 const Share=()=>html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 
@@ -301,9 +332,17 @@ function extrair(t){
 }
 
 function App(){
+const [assinaturaLocal,setAssinaturaLocal]=useState(()=>ls.get(CHAVE_ASSINATURA,'')),[statusAssinatura,setStatusAssinatura]=useState('');
 const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null),[editId,setEditId]=useState(null),[lixeira,setLixeira]=useState(()=>ls.get('dz-r-lixeira',[])),[mostrarLixeira,setMostrarLixeira]=useState(false),[ultimoNumero,setUltimoNumero]=useState(()=>Math.max(Number(ls.get('dz-last-num',0))||0,...ls.get('dz-r',[]).map(nRec),...ls.get('dz-r-lixeira',[]).map(nRec)));
 useEffect(()=>ls.set('dz-c',clients),[clients]);useEffect(()=>ls.set('dz-r',recs),[recs]);useEffect(()=>ls.set('dz-t',tp),[tp]);
 useEffect(()=>ls.set('dz-r-lixeira',lixeira),[lixeira]);useEffect(()=>ls.set('dz-last-num',ultimoNumero),[ultimoNumero]);
+const subirAssinatura=async e=>{
+ const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+ setStatusAssinatura('Processando assinatura...');
+ try{const img=await recortarAssinatura(f);localStorage.setItem(CHAVE_ASSINATURA,JSON.stringify(img));setAssinaturaLocal(img);setStatusAssinatura('Assinatura salva neste celular.');}
+ catch(err){setStatusAssinatura('Erro: '+String(err.message||err))}
+};
+const excluirAssinatura=()=>{if(!confirm('Remover assinatura deste celular?'))return;localStorage.removeItem(CHAVE_ASSINATURA);setAssinaturaLocal('');setStatusAssinatura('Assinatura removida.')};
 const go=s=>{setErr('');setScr(s)};
 const novoRecibo=()=>{setEditId(null);setD(blank());setRes(null);setPm('');setPh('');go('new')};
 const editarRecibo=r=>{setEditId(r.id);setCur(r);setD({...r});setRes(null);setPm('');setPh('');go('new')};
@@ -363,7 +402,7 @@ const confirm=()=>{
 };
 
 if(scr==='done'&&cur)return html`<${Done} r=${cur} go=${go} onEdit=${editarRecibo} onDelete=${excluirRecibo}/>`;
-if(scr==='emp')return html`<${Top} t="Dados da imobiliária" back=${()=>go('home')}/><main><div class="card f" style="gap:12px"><div class="f"><label>Nome da imobiliária</label><input value=${ef.nome} onInput=${e=>setEf({...ef,nome:e.target.value})}/></div><div class="f"><label>Razão social</label><input value=${ef.rs||''} onInput=${e=>setEf({...ef,rs:e.target.value})}/></div><div class="f"><label>CNPJ</label><input inputMode="numeric" placeholder="00.000.000/0000-00" value=${ef.cnpj} onInput=${e=>setEf({...ef,cnpj:cnpjMask(e.target.value)})}/></div><div class="f"><label>Endereço e telefone (opcional)</label><input value=${ef.end} onInput=${e=>setEf({...ef,end:e.target.value})}/></div><div class="mut">Esses dados saem em todos os recibos novos.</div>${err&&html`<div class="err" role="alert">${err}</div>`}</div><button class="btn" onClick=${()=>{if(!ef.nome.trim())return setErr('Informe o nome da imobiliária.');EMI=ef;ls.set('dz-e',ef);setEm(ef);go('home')}}>Salvar dados</button></main>`;
+if(scr==='emp')return html`<${Top} t="Dados da imobiliária" back=${()=>go('home')}/><main><div class="card f" style="gap:12px"><div class="f"><label>Nome da imobiliária</label><input value=${ef.nome} onInput=${e=>setEf({...ef,nome:e.target.value})}/></div><div class="f"><label>Razão social</label><input value=${ef.rs||''} onInput=${e=>setEf({...ef,rs:e.target.value})}/></div><div class="f"><label>CNPJ</label><input inputMode="numeric" placeholder="00.000.000/0000-00" value=${ef.cnpj} onInput=${e=>setEf({...ef,cnpj:cnpjMask(e.target.value)})}/></div><div class="f"><label>Endereço e telefone (opcional)</label><input value=${ef.end} onInput=${e=>setEf({...ef,end:e.target.value})}/></div><div class="f"><label>Assinatura nos recibos</label><div class="mut">Escolha a foto da assinatura azul. O fundo da foto será removido. A imagem ficará somente neste celular e aparecerá sobre a linha azul do PDF e das imagens.</div><input type="file" accept="image/*" onChange=${subirAssinatura}/>${statusAssinatura&&html`<div class="mut" role="status">${statusAssinatura}</div>`}${assinaturaLocal&&html`<div style="background:white;border-radius:10px;padding:12px;text-align:center"><img src=${assinaturaLocal} alt="Assinatura salva" style="height:65px;max-width:90%;object-fit:contain"/></div><button type="button" class="btn alt" onClick=${excluirAssinatura}>Remover assinatura</button>`}</div><div class="mut">Esses dados saem em todos os recibos novos.</div>${err&&html`<div class="err" role="alert">${err}</div>`}</div><button class="btn" onClick=${()=>{if(!ef.nome.trim())return setErr('Informe o nome da imobiliária.');EMI=ef;ls.set('dz-e',ef);setEm(ef);go('home')}}>Salvar dados</button></main>`;
 if(scr==='hist'){
  const L=(mostrarLixeira?lixeira:recs).filter(r=>(String(r.nome||'')+String(r.ref||'')+String(r.numero||'')).toLowerCase().includes(q.toLowerCase()));
  return html`<${Top} t=${mostrarLixeira?'Lixeira de recibos':'Histórico'} back=${()=>{if(mostrarLixeira){setMostrarLixeira(false);setQ('')}else go('home')}}/><main>
