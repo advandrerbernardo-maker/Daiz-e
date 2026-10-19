@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.4-assinatura-privada">
+<meta name="daize-version" content="4.5-rodape-creci">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -120,6 +120,8 @@ const nRec=r=>Number.parseInt(String(r&&r.numero||'0'),10)||0;
 const blank=()=>({clienteId:'',nome:'',cpf:'',end:'',valor:0,ref:'',forma:'PIX',data:today()});
 const body=r=>`Recebi de ${r.nome}${r.cpf?', CPF '+r.cpf:''}${r.end?', residente em '+r.end:''}, a quantia de ${brl(r.valor)} (${ext(r.valor)}), referente a ${String(r.ref||'').trim().replace(/[.\s]+$/,'')}.`;
 const MSG='Olá! Segue seu recibo de pagamento emitido pela Imóveis Manaus. Agradecemos pela confiança!';
+// Dados de registro no rodapé, seguindo a ordem informada pela imobiliária.
+const linhasRodape=r=>[E(r).nome+' - CRECI PJ 438','Daize Santiago - CRECI PF 3317',...(E(r).end?[E(r).end]:[]),...(E(r).cnpj?['CNPJ '+E(r).cnpj]:[])];
 
 function wrap(ctx,t,x,y,w,lh){let l='';for(const p of t.split(' ')){const s=l?l+' '+p:p;if(ctx.measureText(s).width>w&&l){ctx.fillText(l,x,y);y+=lh;l=p}else l=s}ctx.fillText(l,x,y);return y+lh}
 async function draw(r){const W=900,H=1100,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
@@ -133,11 +135,14 @@ y+=14;x.fillStyle='#5A6B8C';x.font='24px Sora,Arial,sans-serif';x.fillText('Form
 x.fillStyle='#0B2247';x.fillText('Manaus, '+dbr(r.data),50,y+70);
 const assinaturaImagem=await carregarAssinatura();
 if(assinaturaImagem){const k=Math.min(300/assinaturaImagem.width,86/assinaturaImagem.height);const ww=assinaturaImagem.width*k,hh=assinaturaImagem.height*k;x.drawImage(assinaturaImagem,(W-ww)/2,H-194-hh,ww,hh)}
-x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.font='22px Sora,Arial,sans-serif';x.fillText(E(r).nome,W/2,H-155);x.font='19px Sora,Arial,sans-serif';const l2=(E(r).rs?E(r).rs+' · ':'')+(E(r).cnpj?'CNPJ '+E(r).cnpj:'');if(l2)x.fillText(l2,W/2,H-125);if(E(r).end)x.fillText(E(r).end,W/2,H-98);if(r.revisadoEm){x.fillStyle='#5A6B8C';x.font='16px Sora,Arial,sans-serif';x.fillText('Recibo retificado em '+stampBR(r.revisadoEm),W/2,H-65)}return c}
+x.fillRect(W/2-230,H-190,460,2);x.textAlign='center';x.fillStyle='#0B2247';
+const rodape=linhasRodape(r),posicoes=rodape.length===4?[H-155,H-124,H-96,H-68]:rodape.length===3?[H-155,H-124,H-96]:[H-155,H-124];
+rodape.forEach((texto,i)=>{x.font=(i===0?'20px ':i===2?'17px ':'19px ')+'Sora,Arial,sans-serif';x.fillText(texto,W/2,posicoes[i],W-110)});
+if(r.revisadoEm){x.fillStyle='#5A6B8C';x.font='16px Sora,Arial,sans-serif';x.fillText('Recibo retificado em '+stampBR(r.revisadoEm),W/2,H-38)}return c}
 async function build(r,fmt){const c=await draw(r),nm='recibo-'+r.numero;
 if(fmt==='pdf'){if(!window.jspdf)throw new Error('pdf');const d=new window.jspdf.jsPDF({unit:'pt',format:'a4'});d.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,595,595*c.height/c.width);return new File([d.output('blob')],nm+'.pdf',{type:'application/pdf'})}
 if(fmt==='docx'){if(!window.JSZip)throw new Error('docx');const z=new JSZip(),e=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;'),P=(t,o={})=>`<w:p><w:pPr>${o.f?'<w:shd w:val="clear" w:color="auto" w:fill="'+o.f+'"/>':''}</w:pPr><w:r><w:rPr>${o.b?'<w:b/>':''}<w:color w:val="${o.c||'0B2247'}"/><w:sz w:val="${o.sz||24}"/></w:rPr><w:t xml:space="preserve">${e(t)}</w:t></w:r></w:p>`;
-const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+P(E(r).nome+(E(r).rs?' ('+E(r).rs+')':'')+(E(r).cnpj?' · CNPJ '+E(r).cnpj:''))+P(E(r).end||'')+(r.revisadoEm?P('Recibo retificado em '+stampBR(r.revisadoEm)): '');
+const dc=P('RECIBO · '+E(r).nome+(E(r).cnpj?' · CNPJ '+E(r).cnpj:'')+' · Nº '+r.numero,{b:1,c:'FFFFFF',sz:36,f:'0B2A5B'})+P(brl(r.valor),{b:1,sz:44,f:'E3ECFB'})+P(body(r))+P('Forma de pagamento: '+r.forma)+P('Manaus, '+dbr(r.data))+P('______________________________')+linhasRodape(r).map(linha=>P(linha)).join('')+(r.revisadoEm?P('Recibo retificado em '+stampBR(r.revisadoEm)): '');
 z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
 z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
 z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+dc+'</w:body></w:document>');
@@ -147,7 +152,7 @@ async function save(f){try{const d=window.claude&&await window.claude.use('downl
 const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove()}
 
 const Paper=({r})=>html`<div class="paper"><div class="hd"><div><b>RECIBO</b><br/><span>${E(r).nome}${E(r).cnpj?' · CNPJ '+E(r).cnpj:''}</span></div><div style="text-align:right"><b style="font-size:16px">Nº ${r.numero}</b><br/><span>${dbr(r.data)}</span></div></div>
-<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p>${r.revisadoEm&&html`<p style="font-size:11px;color:#5A6B8C">Recibo retificado em ${stampBR(r.revisadoEm)}.</p>`}<div class="sg">${ls.get(CHAVE_ASSINATURA,'')&&html`<img class="sig-img" alt="Assinatura" src=${ls.get(CHAVE_ASSINATURA,'')}/>`}<div class="sig-line"></div>${E(r).nome}<br/>${E(r).rs?E(r).rs+' · ':''}${E(r).cnpj?'CNPJ '+E(r).cnpj:''}${E(r).end?html`<br/>${E(r).end}`:''}</div></div></div>`;
+<div class="bd"><div class="val">${brl(r.valor)}</div><p>${body(r)}</p><p style="font-size:12px;color:#5A6B8C">Forma de pagamento: ${r.forma}</p><p style="font-size:12px">Manaus, ${dbr(r.data)}</p>${r.revisadoEm&&html`<p style="font-size:11px;color:#5A6B8C">Recibo retificado em ${stampBR(r.revisadoEm)}.</p>`}<div class="sg">${ls.get(CHAVE_ASSINATURA,'')&&html`<img class="sig-img" alt="Assinatura" src=${ls.get(CHAVE_ASSINATURA,'')}/>`}<div class="sig-line"></div>${linhasRodape(r).map((linha,i)=>html`<div key=${i}>${linha}</div>`)}</div></div></div>`;
 const Top=({t,back})=>html`<div class="top">${back&&html`<button onClick=${back} aria-label="Voltar">←</button>`}<h1>${t}</h1></div>`;
 const Share=()=>html`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 
