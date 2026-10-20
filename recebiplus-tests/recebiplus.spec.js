@@ -18,3 +18,29 @@ test('histórico financeiro do cliente abre sem erros',async({page})=>{await add
 
 test('registra criacao de cliente em auditoria local',async({page})=>{await addClient(page);const entries=await page.evaluate(()=>JSON.parse(localStorage.getItem('recebiplus-auditoria-v1')||'[]'));expect(entries.some(x=>x.action==='cliente_criado')).toBeTruthy();});
 test('registra criacao de cobranca em auditoria local',async({page})=>{await addCharge(page);const entries=await page.evaluate(()=>JSON.parse(localStorage.getItem('recebiplus-auditoria-v1')||'[]'));expect(entries.some(x=>x.action==='cobranca_criada')).toBeTruthy();});
+
+test('Nuvem: autenticação permanece obrigatória na interface',async({page})=>{
+ await page.goto('http://127.0.0.1:8765/recebiplus-nuvem.html');
+ await expect(page.locator('#auth')).toBeVisible();
+ await expect(page.locator('#app')).toBeHidden();
+});
+test('Nuvem: edição de pagamentos e vencimentos exige versão',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync('../recebiplus-nuvem.html','utf8');
+ const adapter=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ expect(html).toContain('repo.setPaid(c.id,!c.paid,c.version)');
+ expect(html).toContain('repo.changeDue(c.id,d,c.version)');
+ expect(adapter.match(/\\.eq\\('version',version\\)/g)?.length).toBe(2);
+});
+test('Nuvem: chave privilegiada não está exposta',async()=>{
+ const fs=await import('node:fs');
+ for(const file of ['../recebiplus-nuvem.html','../recebiplus-supabase/repository.js']){
+ const src=fs.readFileSync(file,'utf8');
+ expect(src).not.toMatch(/service_role|sb_secret_/i);
+ }
+});
+test('Nuvem: parcelas são gravadas em lote',async()=>{
+ const fs=await import('node:fs');
+ const adapter=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ expect(adapter).toContain('.insert(entries.map');
+});
