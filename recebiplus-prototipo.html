@@ -51,8 +51,9 @@ function render(){
     const phone=r.phone.length===12||r.phone.length===13?r.phone:'55'+r.phone;
     window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank','noopener,noreferrer');
    });acts.append(wa);
-   const pay=node('button','Marcar pago','paid');pay.type='button';pay.addEventListener('click',()=>{if(confirm('Confirmar recebimento desta cobrança?')){r.paid=true;save();render()}});acts.append(pay);
+   const pay=node('button','Marcar pago','paid');pay.type='button';pay.addEventListener('click',()=>{if(!confirm('Confirmar recebimento desta cobrança?'))return;r.paid=true;try{save()}catch(_){r.paid=false;alert('Não foi possível salvar o pagamento.');return}render()});acts.append(pay);
   }
+  if(r.paid){const undo=node('button','Desfazer pagamento','paid');undo.type='button';undo.addEventListener('click',()=>{if(!confirm('Reabrir esta cobrança como pendente?'))return;r.paid=false;try{save()}catch(_){r.paid=true;alert('Não foi possível salvar a alteração.');return}render()});acts.append(undo)}
   const editDue=node('button','Alterar vencimento','paid');editDue.type='button';editDue.addEventListener('click',()=>{const value=prompt('Nova data de vencimento (AAAA-MM-DD):',r.due);if(value===null)return;const valid=/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T12:00:00').getTime())&&new Date(value+'T12:00:00').toISOString().slice(0,10)===value;if(!valid){alert('Informe uma data válida no formato AAAA-MM-DD.');return}const old=r.due;r.due=value;try{save()}catch(_){r.due=old;alert('Falha ao salvar o novo vencimento.');return}render()});acts.append(editDue);
   const del=node('button','Excluir','del');del.type='button';del.addEventListener('click',()=>{if(confirm('Excluir esta cobrança?')){rows=rows.filter(x=>x.id!==r.id);save();render()}});acts.append(del);
   box.append(acts);list.append(box);
