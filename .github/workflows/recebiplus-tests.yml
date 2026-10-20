@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [experimento-daize-cobrancas]
-    paths: ['recebiplus-prototipo.html', 'recebiplus-tests/**', '.github/workflows/recebiplus-tests.yml']
+    paths: ['recebiplus-prototipo.html', 'recebiplus-nuvem.html', 'recebiplus-supabase/**', 'recebiplus-tests/**', '.github/workflows/recebiplus-tests.yml']
   pull_request:
     paths: ['recebiplus-prototipo.html', 'recebiplus-tests/**']
 jobs:
