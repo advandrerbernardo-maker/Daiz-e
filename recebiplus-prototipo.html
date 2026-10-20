@@ -6,7 +6,7 @@
 </style></head><body><div class="wrap"><header class="top"><div class="brand">recebi<span>+</span></div><div class="sub">Seus recebimentos em dia.</div></header>
 <div class="notice"><strong>Protótipo local:</strong> sem login, nuvem ou cobrança de assinatura. Use apenas dados fictícios. As informações ficam neste navegador e podem ser perdidas.</div>
 <main><section class="stats"><div class="card stat"><small>A receber</small><strong id="total">R$ 0,00</strong></div><div class="card stat"><small>Vencidos</small><strong id="late">0</strong></div><div class="card stat"><small>Vencem hoje</small><strong id="today">0</strong></div><div class="card stat"><small>Recebidos</small><strong id="received">R$ 0,00</strong></div></section>
-<section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="name">Cliente</label><input id="name" required maxlength="100" placeholder="Ex.: Cliente de teste"><label for="phone">WhatsApp com DDD</label><input id="phone" inputmode="tel" required placeholder="92999999999"><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Data de vencimento combinada com o cliente</label><input id="due" type="date" required><small class="empty">Escolha qualquer data acordada. O aplicativo não define o vencimento.</small></div></div><button class="primary" type="submit">Adicionar cobrança</button></form></section>
+<section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="name">Cliente</label><input id="name" required maxlength="100" placeholder="Ex.: Cliente de teste"><label for="phone">WhatsApp com DDD</label><input id="phone" inputmode="tel" required placeholder="92999999999"><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Data de vencimento combinada com o cliente</label><input id="due" type="date" required><small class="empty">Escolha qualquer data acordada. O aplicativo não define o vencimento.</small></div></div><label for="count">Quantidade de parcelas</label><select id="count"><option value="1">À vista (1 cobrança)</option><option value="2">2 parcelas</option><option value="3">3 parcelas</option><option value="4">4 parcelas</option><option value="5">5 parcelas</option><option value="6">6 parcelas</option><option value="10">10 parcelas</option><option value="12">12 parcelas</option></select><div id="installmentDates"></div><small class="empty">Você define a data de cada parcela. Nenhuma data será imposta automaticamente.</small><button class="primary" type="submit">Salvar cobrança</button></form></section>
 <section class="card"><h2 class="title">Vencimentos</h2><label for="filter">Mostrar</label><select id="filter"><option value="all">Todos</option><option value="today">Vencem hoje</option><option value="late">Atrasados</option><option value="next">Próximos 7 dias</option><option value="paid">Pagos</option></select><div id="items" aria-live="polite"></div></section>
 </main><footer>recebi+ · versão experimental · não utilizar com dados reais</footer></div>
 <script>
@@ -19,6 +19,7 @@ const localDay=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth
 const dateBR=d=>d.split('-').reverse().join('/');
 
 const save=()=>localStorage.setItem(KEY,JSON.stringify(rows));
+function datesUI(){const count=Number($('count').value),box=$('installmentDates');box.replaceChildren();if(count===1)return;for(let i=2;i<=count;i++){const l=node('label','Vencimento da parcela '+i);l.htmlFor='due-'+i;const inp=node('input');inp.id='due-'+i;inp.type='date';inp.required=true;box.append(l,inp)}}
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
 function render(){
  const today=localDay(),pending=rows.filter(r=>!r.paid);
@@ -52,14 +53,19 @@ function render(){
  }
 }
 $('filter').addEventListener('change',render);
+$('count').addEventListener('change',datesUI);
 
 $('due').value='';
 $('form').addEventListener('submit',e=>{
  e.preventDefault();const name=$('name').value.trim(),phone=$('phone').value.replace(/\D/g,''),desc=$('desc').value.trim(),amount=Number($('amount').value),due=$('due').value;
  if(!name||!desc||!/^\d{10,13}$/.test(phone)||!Number.isFinite(amount)||amount<=0||amount>100000000||!/^\d{4}-\d{2}-\d{2}$/.test(due)){alert('Confira os campos. WhatsApp deve incluir DDD e valor deve ser positivo.');return}
- rows.push({id:crypto.randomUUID(),name,phone,desc,cents:Math.round(amount*100),due,paid:false});
- try{save()}catch(_){alert('Não foi possível salvar neste navegador.');return}
- e.target.reset();$('due').value=localDay();render();
+ const count=Number($('count').value),dates=[due];for(let i=2;i<=count;i++){const d=$('due-'+i).value;if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(d)){alert('Escolha a data da parcela '+i);return}dates.push(d)}
+ if(dates.some((d,i)=>i>0&&d<dates[i-1])){alert('As datas das parcelas devem estar em ordem cronológica.');return}
+ const total=Math.round(amount*100),base=Math.floor(total/count),groupId=crypto.randomUUID();
+ const additions=dates.map((d,i)=>({id:crypto.randomUUID(),groupId,name,phone,desc:count>1?desc+' · parcela '+(i+1)+'/'+count:desc,cents:base+(i===count-1?total-base*count:0),due:d,paid:false}));
+ const before=rows;rows=[...rows,...additions];
+ try{save()}catch(_){rows=before;alert('Não foi possível salvar neste navegador.');return}
+ e.target.reset();$('due').value='';datesUI();render();
 });
 render();
 </script></body></html>
