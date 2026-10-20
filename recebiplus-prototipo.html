@@ -7,7 +7,7 @@
 <div class="notice"><strong>Protótipo local:</strong> sem login, nuvem ou cobrança de assinatura. Use apenas dados fictícios. As informações ficam neste navegador e podem ser perdidas.</div>
 <main><section class="stats"><div class="card stat"><small>A receber</small><strong id="total">R$ 0,00</strong></div><div class="card stat"><small>Vencidos</small><strong id="late">0</strong></div><div class="card stat"><small>Vencem hoje</small><strong id="today">0</strong></div><div class="card stat"><small>Recebidos</small><strong id="received">R$ 0,00</strong></div></section>
 <section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="name">Cliente</label><input id="name" required maxlength="100" placeholder="Ex.: Cliente de teste"><label for="phone">WhatsApp com DDD</label><input id="phone" inputmode="tel" required placeholder="92999999999"><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Vencimento</label><input id="due" type="date" required></div></div><button class="primary" type="submit">Adicionar cobrança</button></form></section>
-<section class="card"><h2 class="title">Vencimentos</h2><div id="items" aria-live="polite"></div></section>
+<section class="card"><h2 class="title">Vencimentos</h2><label for="filter">Mostrar</label><select id="filter"><option value="all">Todos</option><option value="today">Vencem hoje</option><option value="late">Atrasados</option><option value="next">Próximos 7 dias</option><option value="paid">Pagos</option></select><div id="items" aria-live="polite"></div></section>
 </main><footer>recebi+ · versão experimental · não utilizar com dados reais</footer></div>
 <script>
 'use strict';
@@ -26,8 +26,12 @@ function render(){
  $('late').textContent=pending.filter(r=>r.due<today).length;
  $('today').textContent=pending.filter(r=>r.due===today).length;
  const list=$('items');list.replaceChildren();
- if(!rows.length){list.append(node('p','Cadastre uma cobrança fictícia para começar.','empty'));return}
- for(const r of [...rows].sort((a,b)=>Number(a.paid)-Number(b.paid)||a.due.localeCompare(b.due))){
+ const filter=$('filter').value;
+ const horizon=new Date(today+'T12:00:00');horizon.setDate(horizon.getDate()+7);
+ const next7=[horizon.getFullYear(),String(horizon.getMonth()+1).padStart(2,'0'),String(horizon.getDate()).padStart(2,'0')].join('-');
+ const visible=rows.filter(r=>filter==='all'||filter==='paid'&&r.paid||!r.paid&&(filter==='today'&&r.due===today||filter==='late'&&r.due<today||filter==='next'&&r.due>today&&r.due<=next7));
+ if(!visible.length){list.append(node('p',rows.length?'Nenhuma cobrança neste filtro.':'Cadastre uma cobrança fictícia para começar.','empty'));return}
+ for(const r of [...visible].sort((a,b)=>Number(a.paid)-Number(b.paid)||a.due.localeCompare(b.due))){
   const box=node('div',undefined,'entry');
   box.append(node('strong',r.name+' · '+money(r.cents)));
   box.append(node('small',r.desc+' · vence '+dateBR(r.due)));
@@ -37,7 +41,7 @@ function render(){
   if(!r.paid){
    const wa=node('button','Abrir WhatsApp','whats');wa.type='button';wa.addEventListener('click',()=>{
     const text='Olá, '+r.name+'! Tudo bem? Passando para lembrar que o pagamento de '+money(r.cents)+' referente a '+r.desc+' vence em '+dateBR(r.due)+'. Se já pagou, por favor desconsidere esta mensagem.';
-    const phone=r.phone.startsWith('55')?r.phone:'55'+r.phone;
+    const phone=r.phone.length===12||r.phone.length===13?r.phone:'55'+r.phone;
     window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank','noopener,noreferrer');
    });acts.append(wa);
    const pay=node('button','Marcar pago','paid');pay.type='button';pay.addEventListener('click',()=>{if(confirm('Confirmar recebimento desta cobrança?')){r.paid=true;save();render()}});acts.append(pay);
@@ -46,6 +50,7 @@ function render(){
   box.append(acts);list.append(box);
  }
 }
+$('filter').addEventListener('change',render);
 $('due').value=localDay();
 $('form').addEventListener('submit',e=>{
  e.preventDefault();const name=$('name').value.trim(),phone=$('phone').value.replace(/\D/g,''),desc=$('desc').value.trim(),amount=Number($('amount').value),due=$('due').value;
