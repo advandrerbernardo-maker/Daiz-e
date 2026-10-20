@@ -30,7 +30,7 @@ test('Nuvem: edição de pagamentos e vencimentos exige versão',async()=>{
  const adapter=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
  expect(html).toContain('repo.setPaid(c.id,!c.paid,c.version)');
  expect(html).toContain('repo.changeDue(c.id,d,c.version)');
- expect(adapter.match(/\\.eq\\('version',version\\)/g)?.length).toBe(2);
+ expect(adapter.split(".eq('version',version)").length-1).toBe(2);
 });
 test('Nuvem: chave privilegiada não está exposta',async()=>{
  const fs=await import('node:fs');
