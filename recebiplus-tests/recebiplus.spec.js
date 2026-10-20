@@ -44,3 +44,39 @@ test('Nuvem: parcelas são gravadas em lote',async()=>{
  const adapter=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
  expect(adapter).toContain('.insert(entries.map');
 });
+
+test('Nuvem: concorrencia recusa versao desatualizada no repositorio',async()=>{
+ const {createRecebiRepository}=await import('../recebiplus-supabase/repository.js');
+ const calls=[];
+ const db={version:3,paid:false,due_date:'2027-01-10'};
+ const supabase={
+  auth:{getUser:async()=>({data:{user:{id:'user-a'}},error:null})},
+  from:table=>{
+   expect(table).toBe('recebiplus_charges');
+   const filters={};let patch;
+   const builder={
+    update(data){patch=data;return builder},
+    eq(key,val){filters[key]=val;return builder},
+    select(){return Promise.resolve({data:filters.version===db.version?[{...db,...patch,version:db.version+1}]:[],error:null})}
+   };
+   calls.push(filters);
+   return builder;
+  }
+ };
+ const repo=createRecebiRepository(supabase);
+ await expect(repo.setPaid('charge-a',true,2)).rejects.toThrow(/outro dispositivo/);
+ const result=await repo.setPaid('charge-a',true,3);
+ expect(result.paid).toBe(true);
+ expect(calls[0].version).toBe(2);
+ expect(calls[1].version).toBe(3);
+});
+test('Nuvem: usuario sem sessao nao grava pagamentos',async()=>{
+ const {createRecebiRepository}=await import('../recebiplus-supabase/repository.js');
+ let accessed=false;
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:null},error:null})},
+  from:()=>{accessed=true;throw Error('Acesso indevido')}
+ });
+ await expect(repo.setPaid('charge-a',true,1)).rejects.toThrow(/Entre na sua conta/);
+ expect(accessed).toBe(false);
+});
