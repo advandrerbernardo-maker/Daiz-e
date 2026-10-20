@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>recebi+ | Protótipo</title><meta name="theme-color" content="#102B3C">
+<style>
+:root{font-family:system-ui,-apple-system,Arial,sans-serif;color:#183044;background:#f2f6f8}*{box-sizing:border-box}body{margin:0}.top{background:#102B3C;color:white;padding:22px 18px}.wrap{max-width:620px;margin:auto}.brand{font-size:32px;font-weight:800;letter-spacing:-1.5px}.brand span{color:#55E4B0}.sub{color:#c9dee0;font-size:13px}.notice{background:#fff0cf;color:#60450c;padding:11px 16px;font-size:13px}main{padding:16px;display:grid;gap:14px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:white;border-radius:15px;padding:16px;box-shadow:0 2px 12px #1830440c}.stat small{display:block;color:#617481}.stat strong{display:block;font-size:22px;margin-top:5px}.title{font-weight:750;font-size:17px;margin:0 0 12px}label{font-size:13px;font-weight:650;display:block;margin:12px 0 5px}input,select{width:100%;padding:13px;border:1px solid #bacbd0;border-radius:10px;font:inherit;background:white;color:#183044}button{font:inherit;cursor:pointer;border-radius:10px;padding:11px 13px;border:0;font-weight:700}button.primary{background:#102B3C;color:white;width:100%;margin-top:14px}button.whats{background:#daf7e9;color:#075f3b}button.paid{background:#e7eef2;color:#183044}button.del{background:#ffebeb;color:#8b2020}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.entry{padding:14px 0;border-top:1px solid #e1e9ec}.entry:first-child{border-top:0}.entry strong{display:block}.entry small{color:#617481}.pill{font-size:12px;border-radius:30px;background:#eaf2f4;padding:4px 8px;display:inline-block;margin-top:6px}.empty{color:#647984;font-size:14px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}footer{text-align:center;padding:20px;color:#667b85;font-size:12px}
+</style></head><body><div class="wrap"><header class="top"><div class="brand">recebi<span>+</span></div><div class="sub">Seus recebimentos em dia.</div></header>
+<div class="notice"><strong>Protótipo local:</strong> sem login, nuvem ou cobrança de assinatura. Use apenas dados fictícios. As informações ficam neste navegador e podem ser perdidas.</div>
+<main><section class="stats"><div class="card stat"><small>A receber</small><strong id="total">R$ 0,00</strong></div><div class="card stat"><small>Vencidos</small><strong id="late">0</strong></div><div class="card stat"><small>Vencem hoje</small><strong id="today">0</strong></div><div class="card stat"><small>Recebidos</small><strong id="received">R$ 0,00</strong></div></section>
+<section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="name">Cliente</label><input id="name" required maxlength="100" placeholder="Ex.: Cliente de teste"><label for="phone">WhatsApp com DDD</label><input id="phone" inputmode="tel" required placeholder="92999999999"><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Vencimento</label><input id="due" type="date" required></div></div><button class="primary" type="submit">Adicionar cobrança</button></form></section>
+<section class="card"><h2 class="title">Vencimentos</h2><div id="items" aria-live="polite"></div></section>
+</main><footer>recebi+ · versão experimental · não utilizar com dados reais</footer></div>
+<script>
+'use strict';
+const KEY='recebiplus-prototipo-v1';
+let rows=[];try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))rows=saved.filter(x=>x&&typeof x.id==='string')}catch(_){}
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n/100);
+const localDay=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
+const dateBR=d=>d.split('-').reverse().join('/');
+const save=()=>localStorage.setItem(KEY,JSON.stringify(rows));
+function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
+function render(){
+ const today=localDay(),pending=rows.filter(r=>!r.paid);
+ $('total').textContent=money(pending.reduce((s,r)=>s+r.cents,0));
+ $('received').textContent=money(rows.filter(r=>r.paid).reduce((s,r)=>s+r.cents,0));
+ $('late').textContent=pending.filter(r=>r.due<today).length;
+ $('today').textContent=pending.filter(r=>r.due===today).length;
+ const list=$('items');list.replaceChildren();
+ if(!rows.length){list.append(node('p','Cadastre uma cobrança fictícia para começar.','empty'));return}
+ for(const r of [...rows].sort((a,b)=>Number(a.paid)-Number(b.paid)||a.due.localeCompare(b.due))){
+  const box=node('div',undefined,'entry');
+  box.append(node('strong',r.name+' · '+money(r.cents)));
+  box.append(node('small',r.desc+' · vence '+dateBR(r.due)));
+  const state=r.paid?'Pago':r.due<today?'Atrasado':r.due===today?'Vence hoje':'A vencer';
+  box.append(node('div',state,'pill'));
+  const acts=node('div',undefined,'actions');
+  if(!r.paid){
+   const wa=node('button','Abrir WhatsApp','whats');wa.type='button';wa.addEventListener('click',()=>{
+    const text='Olá, '+r.name+'! Tudo bem? Passando para lembrar que o pagamento de '+money(r.cents)+' referente a '+r.desc+' vence em '+dateBR(r.due)+'. Se já pagou, por favor desconsidere esta mensagem.';
+    const phone=r.phone.startsWith('55')?r.phone:'55'+r.phone;
+    window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank','noopener,noreferrer');
+   });acts.append(wa);
+   const pay=node('button','Marcar pago','paid');pay.type='button';pay.addEventListener('click',()=>{if(confirm('Confirmar recebimento desta cobrança?')){r.paid=true;save();render()}});acts.append(pay);
+  }
+  const del=node('button','Excluir','del');del.type='button';del.addEventListener('click',()=>{if(confirm('Excluir esta cobrança?')){rows=rows.filter(x=>x.id!==r.id);save();render()}});acts.append(del);
+  box.append(acts);list.append(box);
+ }
+}
+$('due').value=localDay();
+$('form').addEventListener('submit',e=>{
+ e.preventDefault();const name=$('name').value.trim(),phone=$('phone').value.replace(/\D/g,''),desc=$('desc').value.trim(),amount=Number($('amount').value),due=$('due').value;
+ if(!name||!desc||!/^\d{10,13}$/.test(phone)||!Number.isFinite(amount)||amount<=0||amount>100000000||!/^\d{4}-\d{2}-\d{2}$/.test(due)){alert('Confira os campos. WhatsApp deve incluir DDD e valor deve ser positivo.');return}
+ rows.push({id:crypto.randomUUID(),name,phone,desc,cents:Math.round(amount*100),due,paid:false});
+ try{save()}catch(_){alert('Não foi possível salvar neste navegador.');return}
+ e.target.reset();$('due').value=localDay();render();
+});
+render();
+</script></body></html>
