@@ -46,7 +46,9 @@ test('Nuvem: parcelas são gravadas em lote',async()=>{
 });
 
 test('Nuvem: concorrencia recusa versao desatualizada no repositorio',async()=>{
- const {createRecebiRepository}=await import('../recebiplus-supabase/repository.js');
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
  const calls=[];
  const db={version:3,paid:false,due_date:'2027-01-10'};
  const supabase={
@@ -71,7 +73,9 @@ test('Nuvem: concorrencia recusa versao desatualizada no repositorio',async()=>{
  expect(calls[1].version).toBe(3);
 });
 test('Nuvem: usuario sem sessao nao grava pagamentos',async()=>{
- const {createRecebiRepository}=await import('../recebiplus-supabase/repository.js');
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
  let accessed=false;
  const repo=createRecebiRepository({
   auth:{getUser:async()=>({data:{user:null},error:null})},
