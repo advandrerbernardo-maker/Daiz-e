@@ -68,9 +68,9 @@ $('due').value='';
 $('form').addEventListener('submit',e=>{
  e.preventDefault();const customer=customers.find(c=>c.id===$('customerSelect').value);if(!customer){alert('Selecione um cliente cadastrado.');return}const {name,phone}=customer,desc=$('desc').value.trim(),amount=Number($('amount').value),due=$('due').value;
  if(!name||!desc||!/^\d{10,13}$/.test(phone)||!Number.isFinite(amount)||amount<=0||amount>100000000||!/^\d{4}-\d{2}-\d{2}$/.test(due)){alert('Confira os campos. WhatsApp deve incluir DDD e valor deve ser positivo.');return}
- const count=Number($('count').value),dates=[due];if(!Number.isInteger(count)||count<1||count>MAX_INSTALLMENTS){alert('Quantidade de parcelas inválida.');return}for(let i=2;i<=count;i++){const d=$('due-'+i).value;if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(d)){alert('Escolha a data da parcela '+i);return}dates.push(d)}
+ const count=Number($('count').value),dates=[due];if(!Number.isInteger(count)||count<1||count>MAX_INSTALLMENTS){alert('Quantidade de parcelas inválida.');return}for(let i=2;i<=count;i++){const d=$('due-'+i).value;if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){alert('Escolha a data da parcela '+i);return}dates.push(d)}
  if(dates.some((d,i)=>i>0&&d<dates[i-1])){alert('As datas das parcelas devem estar em ordem cronológica.');return}
- const total=Math.round(amount*100),base=Math.floor(total/count),groupId=crypto.randomUUID();
+ const total=Math.round(amount*100);if(total<count){alert('O valor total deve permitir pelo menos R$ 0,01 por parcela.');return}const base=Math.floor(total/count),groupId=crypto.randomUUID();
  const additions=dates.map((d,i)=>({id:crypto.randomUUID(),groupId,customerId:customer.id,name,phone,desc:count>1?desc+' · parcela '+(i+1)+'/'+count:desc,cents:base+(i===count-1?total-base*count:0),due:d,paid:false}));
  const before=rows;rows=[...rows,...additions];
  try{save()}catch(_){rows=before;alert('Não foi possível salvar neste navegador.');return}
