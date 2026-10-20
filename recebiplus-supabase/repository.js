@@ -22,6 +22,11 @@ export function createRecebiRepository(supabase) {
       const owner_id=await userId();
       return query(supabase.from('recebiplus_charges').insert({owner_id,client_id,group_id,description,cents,due_date}).select().single());
     },
+    async addCharges(entries) {
+      const owner_id=await userId();
+      if(!Array.isArray(entries)||entries.length<1||entries.length>20) throw new Error('Quantidade de parcelas inválida');
+      return query(supabase.from('recebiplus_charges').insert(entries.map(e=>({...e,owner_id}))).select());
+    },
     async setPaid(id,paid) {
       await userId();
       return query(supabase.from('recebiplus_charges').update({paid}).eq('id',id).select().single());
