@@ -6,14 +6,16 @@
 </style></head><body><div class="wrap"><header class="top"><div class="brand">recebi<span>+</span></div><div class="sub">Seus recebimentos em dia.</div></header>
 <div class="notice"><strong>Protótipo local:</strong> sem login, nuvem ou cobrança de assinatura. Use apenas dados fictícios. As informações ficam neste navegador e podem ser perdidas.</div>
 <main><section class="stats"><div class="card stat"><small>A receber</small><strong id="total">R$ 0,00</strong></div><div class="card stat"><small>Vencidos</small><strong id="late">0</strong></div><div class="card stat"><small>Vencem hoje</small><strong id="today">0</strong></div><div class="card stat"><small>Recebidos</small><strong id="received">R$ 0,00</strong></div></section>
-<section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="name">Cliente</label><input id="name" required maxlength="100" placeholder="Ex.: Cliente de teste"><label for="phone">WhatsApp com DDD</label><input id="phone" inputmode="tel" required placeholder="92999999999"><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Data de vencimento combinada com o cliente</label><input id="due" type="date" required><small class="empty">Escolha qualquer data acordada. O aplicativo não define o vencimento.</small></div></div><label for="count">Quantidade de parcelas</label><select id="count" required></select><div id="installmentDates"></div><small class="empty">Você define a data de cada parcela. Nenhuma data será imposta automaticamente.</small><button class="primary" type="submit">Salvar cobrança</button></form></section>
+<section class="card"><h2 class="title">Clientes cadastrados</h2><form id="customerForm"><label for="customerName">Nome do cliente</label><input id="customerName" required maxlength="100" placeholder="Ex.: Cliente fictício"><label for="customerPhone">WhatsApp com DDD</label><input id="customerPhone" required inputmode="tel" placeholder="92999999999"><button class="primary" type="submit">Salvar cliente</button></form><div id="customerList" aria-live="polite"></div></section><section class="card"><h2 class="title">Nova cobrança</h2><form id="form"><label for="customerSelect">Selecione o cliente cadastrado</label><select id="customerSelect" required><option value="">Selecione um cliente</option></select><label for="desc">Descrição</label><input id="desc" required maxlength="150" placeholder="Ex.: Parcela do serviço"><div class="two"><div><label for="amount">Valor (R$)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="149.90"></div><div><label for="due">Data de vencimento combinada com o cliente</label><input id="due" type="date" required><small class="empty">Escolha qualquer data acordada. O aplicativo não define o vencimento.</small></div></div><label for="count">Quantidade de parcelas</label><select id="count" required></select><div id="installmentDates"></div><small class="empty">Você define a data de cada parcela. Nenhuma data será imposta automaticamente.</small><button class="primary" type="submit">Salvar cobrança</button></form></section>
 <section class="card"><h2 class="title">Vencimentos</h2><label for="filter">Mostrar</label><select id="filter"><option value="all">Todos</option><option value="today">Vencem hoje</option><option value="late">Atrasados</option><option value="next">Próximos 7 dias</option><option value="paid">Pagos</option></select><div id="items" aria-live="polite"></div></section>
 </main><footer>recebi+ · versão experimental · não utilizar com dados reais</footer></div>
 <script>
 'use strict';
 const KEY='recebiplus-prototipo-v1';
+const CUSTOMER_KEY='recebiplus-clientes-v1';
 const MAX_INSTALLMENTS=20; // Limite configurável para futuras versões.
 let rows=[];try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))rows=saved.filter(x=>x&&typeof x.id==='string')}catch(_){}
+let customers=[];try{const data=JSON.parse(localStorage.getItem(CUSTOMER_KEY)||'[]');if(Array.isArray(data))customers=data.filter(x=>x&&typeof x.id==='string'&&typeof x.name==='string'&&typeof x.phone==='string')}catch(_){}
 const $=id=>document.getElementById(id);
 const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n/100);
 const localDay=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
@@ -23,6 +25,7 @@ const save=()=>localStorage.setItem(KEY,JSON.stringify(rows));
 function initInstallmentOptions(){const select=$('count');for(let n=1;n<=MAX_INSTALLMENTS;n++){const option=document.createElement('option');option.value=String(n);option.textContent=n===1?'À vista (1 cobrança)':n+' parcelas';select.append(option)}}
 function datesUI(){const count=Number($('count').value),box=$('installmentDates');box.replaceChildren();if(count===1)return;for(let i=2;i<=count;i++){const l=node('label','Vencimento da parcela '+i);l.htmlFor='due-'+i;const inp=node('input');inp.id='due-'+i;inp.type='date';inp.required=true;box.append(l,inp)}}
 function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e}
+function renderCustomers(){const select=$('customerSelect'),selected=select.value;select.replaceChildren();const placeholder=node('option','Selecione um cliente');placeholder.value='';select.append(placeholder);const list=$('customerList');list.replaceChildren();for(const c of [...customers].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'))){const option=node('option',c.name+' · '+c.phone);option.value=c.id;select.append(option);const item=node('div',undefined,'entry');item.append(node('strong',c.name));item.append(node('small',c.phone));list.append(item)}if(customers.some(c=>c.id===selected))select.value=selected;if(!customers.length)list.append(node('p','Nenhum cliente fictício cadastrado.','empty'))}
 function render(){
  const today=localDay(),pending=rows.filter(r=>!r.paid);
  $('total').textContent=money(pending.reduce((s,r)=>s+r.cents,0));
@@ -55,7 +58,9 @@ function render(){
  }
 }
 $('filter').addEventListener('change',render);
+$('customerForm').addEventListener('submit',e=>{e.preventDefault();const name=$('customerName').value.trim(),phone=$('customerPhone').value.replace(/\\D/g,'');if(!name||!/^\\d{10,13}$/.test(phone)){alert('Informe nome e WhatsApp válido com DDD.');return}if(customers.some(c=>c.phone===phone)){alert('Já existe um cliente com esse telefone.');return}const c={id:crypto.randomUUID(),name,phone};customers.push(c);try{localStorage.setItem(CUSTOMER_KEY,JSON.stringify(customers))}catch(_){customers.pop();alert('Falha ao salvar cliente.');return}e.target.reset();renderCustomers();$('customerSelect').value=c.id});
 initInstallmentOptions();
+renderCustomers();
 $('count').addEventListener('change',datesUI);
 
 $('due').value='';
@@ -65,7 +70,7 @@ $('form').addEventListener('submit',e=>{
  const count=Number($('count').value),dates=[due];if(!Number.isInteger(count)||count<1||count>MAX_INSTALLMENTS){alert('Quantidade de parcelas inválida.');return}for(let i=2;i<=count;i++){const d=$('due-'+i).value;if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(d)){alert('Escolha a data da parcela '+i);return}dates.push(d)}
  if(dates.some((d,i)=>i>0&&d<dates[i-1])){alert('As datas das parcelas devem estar em ordem cronológica.');return}
  const total=Math.round(amount*100),base=Math.floor(total/count),groupId=crypto.randomUUID();
- const additions=dates.map((d,i)=>({id:crypto.randomUUID(),groupId,name,phone,desc:count>1?desc+' · parcela '+(i+1)+'/'+count:desc,cents:base+(i===count-1?total-base*count:0),due:d,paid:false}));
+ const additions=dates.map((d,i)=>({id:crypto.randomUUID(),groupId,customerId:customer.id,name,phone,desc:count>1?desc+' · parcela '+(i+1)+'/'+count:desc,cents:base+(i===count-1?total-base*count:0),due:d,paid:false}));
  const before=rows;rows=[...rows,...additions];
  try{save()}catch(_){rows=before;alert('Não foi possível salvar neste navegador.');return}
  e.target.reset();$('due').value='';datesUI();render();
