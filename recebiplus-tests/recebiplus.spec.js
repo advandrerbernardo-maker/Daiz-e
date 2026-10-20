@@ -117,3 +117,48 @@ test('Nuvem: owner_id de parcela enviada nao substitui a conta autenticada',asyn
  await repo.addCharges([{client_id:'c',group_id:'g',description:'Teste',cents:500,due_date:'2027-01-10',owner_id:'conta-b'}]);
  expect(inserted[0].owner_id).toBe('conta-a');
 });
+
+test('Nuvem: erro de rede nao e tratado como pagamento realizado',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:{id:'conta-a'}},error:null})},
+  from:()=>({update:()=>({eq(){return this},select:async()=>({data:null,error:{message:'Conexao indisponivel'}})})})
+ });
+ await expect(repo.setPaid('cobranca',true,1)).rejects.toThrow('Conexao indisponivel');
+});
+test('Nuvem: conflito de vencimento exige atualizar antes de tentar novamente',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:{id:'conta-a'}},error:null})},
+  from:()=>({update:()=>({eq(){return this},select:async()=>({data:[],error:null})})})
+ });
+ await expect(repo.changeDue('cobranca','2027-04-12',1)).rejects.toThrow(/outro dispositivo/);
+});
+test('Nuvem: sem autenticacao nao e possivel consultar clientes',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ let reached=false;
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:null},error:null})},
+  from:()=>{reached=true;throw Error('Consulta nao autorizada')}
+ });
+ await expect(repo.clients()).rejects.toThrow(/Entre na sua conta/);
+ expect(reached).toBe(false);
+});
+test('Nuvem: parcelamento com mais de 20 registros e recusado',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ let reached=false;
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:{id:'conta-a'}},error:null})},
+  from:()=>{reached=true;throw Error('Nao deveria gravar')}
+ });
+ await expect(repo.addCharges(Array.from({length:21},()=>({})))).rejects.toThrow(/Quantidade de parcelas/);
+ expect(reached).toBe(false);
+});
