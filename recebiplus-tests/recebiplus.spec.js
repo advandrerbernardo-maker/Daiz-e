@@ -205,3 +205,16 @@ for(const operation of blockedOperations){
   });
  }
 }
+
+test('Nuvem: conflito de versao tenta atualizar dados automaticamente',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync('../recebiplus-nuvem.html','utf8');
+ expect(html).toContain("if(e.message.includes('alterada em outro dispositivo'))");
+ expect(html).toContain('try{await refresh()}catch(refreshError)');
+ expect(html).toContain('msg(error)');
+});
+test('Nuvem: vencimento pago nao apresenta opcao de alteracao',async()=>{
+ const fs=await import('node:fs');
+ const html=fs.readFileSync('../recebiplus-nuvem.html','utf8');
+ expect(html).toContain('if(!c.paid)actions.append(due)');
+});
