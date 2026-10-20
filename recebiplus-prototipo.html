@@ -20,7 +20,7 @@ const $=id=>document.getElementById(id);
 const money=n=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n/100);
 const localDay=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const dateBR=d=>d.split('-').reverse().join('/');
-const validDate=d=>{if(!validDate(d))return false;const dt=new Date(d+'T12:00:00');return !Number.isNaN(dt.getTime())&&[dt.getFullYear(),String(dt.getMonth()+1).padStart(2,'0'),String(dt.getDate()).padStart(2,'0')].join('-')===d};
+const validDate=d=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const dt=new Date(d+'T12:00:00');return !Number.isNaN(dt.getTime())&&[dt.getFullYear(),String(dt.getMonth()+1).padStart(2,'0'),String(dt.getDate()).padStart(2,'0')].join('-')===d};
 
 const save=()=>localStorage.setItem(KEY,JSON.stringify(rows));
 function initInstallmentOptions(){const select=$('count');for(let n=1;n<=MAX_INSTALLMENTS;n++){const option=document.createElement('option');option.value=String(n);option.textContent=n===1?'À vista (1 cobrança)':n+' parcelas';select.append(option)}}
