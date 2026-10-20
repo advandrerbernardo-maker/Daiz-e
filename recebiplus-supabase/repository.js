@@ -27,13 +27,17 @@ export function createRecebiRepository(supabase) {
       if(!Array.isArray(entries)||entries.length<1||entries.length>20) throw new Error('Quantidade de parcelas inválida');
       return query(supabase.from('recebiplus_charges').insert(entries.map(e=>({...e,owner_id}))).select());
     },
-    async setPaid(id,paid) {
+    async setPaid(id,paid,version) {
       await userId();
-      return query(supabase.from('recebiplus_charges').update({paid}).eq('id',id).select().single());
+      const data=await query(supabase.from('recebiplus_charges').update({paid}).eq('id',id).eq('version',version).select());
+      if(data.length!==1) throw new Error('Cobrança alterada em outro dispositivo. Atualize os dados antes de tentar novamente.');
+      return data[0];
     },
-    async changeDue(id,due_date) {
+    async changeDue(id,due_date,version) {
       await userId();
-      return query(supabase.from('recebiplus_charges').update({due_date}).eq('id',id).select().single());
+      const data=await query(supabase.from('recebiplus_charges').update({due_date}).eq('id',id).eq('version',version).select());
+      if(data.length!==1) throw new Error('Cobrança alterada em outro dispositivo. Atualize os dados antes de tentar novamente.');
+      return data[0];
     },
     async audit() { await userId(); return query(supabase.from('recebiplus_audit').select('*').order('at',{ascending:false}).limit(100)); }
   };
