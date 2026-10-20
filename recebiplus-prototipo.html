@@ -53,6 +53,7 @@ function render(){
    });acts.append(wa);
    const pay=node('button','Marcar pago','paid');pay.type='button';pay.addEventListener('click',()=>{if(confirm('Confirmar recebimento desta cobrança?')){r.paid=true;save();render()}});acts.append(pay);
   }
+  const editDue=node('button','Alterar vencimento','paid');editDue.type='button';editDue.addEventListener('click',()=>{const value=prompt('Nova data de vencimento (AAAA-MM-DD):',r.due);if(value===null)return;const valid=/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(new Date(value+'T12:00:00').getTime())&&new Date(value+'T12:00:00').toISOString().slice(0,10)===value;if(!valid){alert('Informe uma data válida no formato AAAA-MM-DD.');return}const old=r.due;r.due=value;try{save()}catch(_){r.due=old;alert('Falha ao salvar o novo vencimento.');return}render()});acts.append(editDue);
   const del=node('button','Excluir','del');del.type='button';del.addEventListener('click',()=>{if(confirm('Excluir esta cobrança?')){rows=rows.filter(x=>x.id!==r.id);save();render()}});acts.append(del);
   box.append(acts);list.append(box);
  }
