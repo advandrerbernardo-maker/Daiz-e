@@ -84,3 +84,36 @@ test('Nuvem: usuario sem sessao nao grava pagamentos',async()=>{
  await expect(repo.setPaid('charge-a',true,1)).rejects.toThrow(/Entre na sua conta/);
  expect(accessed).toBe(false);
 });
+
+test('Nuvem: cada conta registra cliente com seu proprio identificador',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ const recorded=[];
+ function fake(id){
+  return {
+   auth:{getUser:async()=>({data:{user:{id}},error:null})},
+   from:table=>{
+    expect(table).toBe('recebiplus_clients');
+    return {insert:row=>{recorded.push(row);return {select:()=>({single:async()=>({data:row,error:null})})}}};
+   }
+  };
+ }
+ const a=createRecebiRepository(fake('conta-a'));
+ const b=createRecebiRepository(fake('conta-b'));
+ await a.addClient('Cliente A','92988887777');
+ await b.addClient('Cliente B','92999996666');
+ expect(recorded.map(x=>x.owner_id)).toEqual(['conta-a','conta-b']);
+});
+test('Nuvem: owner_id de parcela enviada nao substitui a conta autenticada',async()=>{
+ const fs=await import('node:fs');
+ const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+ const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+ let inserted;
+ const repo=createRecebiRepository({
+  auth:{getUser:async()=>({data:{user:{id:'conta-a'}},error:null})},
+  from:()=>({insert:rows=>{inserted=rows;return {select:async()=>({data:rows,error:null})}}})
+ });
+ await repo.addCharges([{client_id:'c',group_id:'g',description:'Teste',cents:500,due_date:'2027-01-10',owner_id:'conta-b'}]);
+ expect(inserted[0].owner_id).toBe('conta-a');
+});
