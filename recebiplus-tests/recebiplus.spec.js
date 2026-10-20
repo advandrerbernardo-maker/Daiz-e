@@ -166,7 +166,7 @@ test('Nuvem: parcelamento com mais de 20 registros e recusado',async()=>{
 for(let n=1;n<=20;n++){
  test('Matriz 100: seletor de parcelas '+n,async({page})=>{
   const option=page.locator('#count option').nth(n-1);
-  await expect(option).toHaveValue(String(n));
+  expect(await option.getAttribute('value')).toBe(String(n));
  });
 }
 for(let n=1;n<=20;n++){
