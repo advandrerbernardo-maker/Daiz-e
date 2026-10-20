@@ -172,7 +172,7 @@ for(let n=1;n<=20;n++){
 for(let n=1;n<=20;n++){
  test('Matriz 100: campos de vencimento para '+n+' parcelas',async({page})=>{
   await page.locator('#count').selectOption(String(n));
-  await expect(page.locator('#dates input[type="date"]')).toHaveCount(n-1);
+  await expect(page.locator('#installmentDates input[type="date"]')).toHaveCount(n-1);
  });
 }
 const blockedOperations=['clients','charges','addClient','addCharges','setPaid','changeDue'];
