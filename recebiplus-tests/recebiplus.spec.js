@@ -162,3 +162,46 @@ test('Nuvem: parcelamento com mais de 20 registros e recusado',async()=>{
  await expect(repo.addCharges(Array.from({length:21},()=>({})))).rejects.toThrow(/Quantidade de parcelas/);
  expect(reached).toBe(false);
 });
+
+for(let n=1;n<=20;n++){
+ test('Matriz 100: seletor de parcelas '+n,async({page})=>{
+  const option=page.locator('#count option').nth(n-1);
+  await expect(option).toHaveValue(String(n));
+ });
+}
+for(let n=1;n<=20;n++){
+ test('Matriz 100: campos de vencimento para '+n+' parcelas',async({page})=>{
+  await page.locator('#count').selectOption(String(n));
+  await expect(page.locator('#dates input[type="date"]')).toHaveCount(n-1);
+ });
+}
+const blockedOperations=['clients','charges','addClient','addCharges','setPaid','changeDue'];
+const blockedSessions=[
+ {label:'usuario nulo',user:null,error:null},
+ {label:'usuario indefinido',user:undefined,error:null},
+ {label:'usuario falso',user:false,error:null},
+ {label:'usuario zero',user:0,error:null},
+ {label:'usuario vazio',user:'',error:null},
+ {label:'erro de autenticacao',user:null,error:{message:'Sessao expirada'}}
+];
+for(const operation of blockedOperations){
+ for(const scenario of blockedSessions){
+  test('Matriz 100: '+operation+' bloqueia '+scenario.label,async()=>{
+   const fs=await import('node:fs');
+   const source=fs.readFileSync('../recebiplus-supabase/repository.js','utf8');
+   const {createRecebiRepository}=await import('data:text/javascript,'+encodeURIComponent(source));
+   let accessed=false;
+   const repo=createRecebiRepository({
+    auth:{getUser:async()=>({data:{user:scenario.user},error:scenario.error})},
+    from:()=>{accessed=true;throw Error('Acesso indevido')}
+   });
+   const args={
+    clients:[],charges:[],addClient:['Teste','92999999999'],
+    addCharges:[[{client_id:'a',cents:100}]],
+    setPaid:['c',true,1],changeDue:['c','2027-01-01',1]
+   }[operation];
+   await expect(repo[operation](...args)).rejects.toThrow(/Entre na sua conta/);
+   expect(accessed).toBe(false);
+  });
+ }
+}
