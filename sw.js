@@ -1,5 +1,5 @@
 /* Daiz-e v4.5.1 · CRECI PJ 438 sem quebra no rodapé, assinatura preservada */
-const CACHE='daiz-e-v4-5-2-beta-route-separated-20261023';
+const CACHE='daiz-e-v4-6-0-recibo-definitivo-20261023';
 const SCOPE=self.registration.scope;
 const INDEX=new URL('index.html',SCOPE).href;
 const CORE=['./','index.html','manifest.webmanifest','icon-192.png?v=d2-20261014','icon-512.png?v=d2-20261014','icon-maskable-512.png?v=d2-20261014'];
