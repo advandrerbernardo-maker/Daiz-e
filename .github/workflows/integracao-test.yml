@@ -1,8 +1,9 @@
-name: Validacao integracao experimental Daiz-e
+name: Validacao integracao Recebi+ Daiz-e
 on:
   push:
     branches: [main]
     paths:
+      - 'index.html'
       - 'integracao-teste.html'
       - 'sw.js'
       - 'integracao-tests/**'
