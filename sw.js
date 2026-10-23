@@ -1,5 +1,5 @@
 /* Daiz-e v4.5.1 · CRECI PJ 438 sem quebra no rodapé, assinatura preservada */
-const CACHE='daiz-e-v4-5-1-creci-pj-sem-quebra-20261018';
+const CACHE='daiz-e-v4-5-2-beta-route-separated-20261023';
 const SCOPE=self.registration.scope;
 const INDEX=new URL('index.html',SCOPE).href;
 const CORE=['./','index.html','manifest.webmanifest','icon-192.png?v=d2-20261014','icon-512.png?v=d2-20261014','icon-maskable-512.png?v=d2-20261014'];
@@ -50,12 +50,15 @@ self.addEventListener('fetch',evento=>{
  if(!mesmoSite&&!essencial)return;
  // A página busca versão nova quando há conexão, mas abre a versão em cache sem internet.
  if(req.mode==='navigate'){
+  // Páginas de teste nunca substituem o index.html que mantém o modo offline original.
+  const betaPage=new URL('integracao-teste.html',SCOPE).href;
+  const cacheTarget=url.pathname===new URL(betaPage).pathname?betaPage:INDEX;
   evento.respondWith((async()=>{
    try{
     const res=await fetch(req);
-    if(res.ok){const copia=res.clone();evento.waitUntil(caches.open(CACHE).then(c=>c.put(INDEX,copia)).catch(()=>{}))}
+    if(res.ok){const copia=res.clone();evento.waitUntil(caches.open(CACHE).then(c=>c.put(cacheTarget,copia)).catch(()=>{}))}
     return res;
-   }catch(e){return (await caches.match(INDEX))||(await caches.match(new URL('./',SCOPE).href))||Response.error()}
+   }catch(e){return (await caches.match(cacheTarget))||(cacheTarget===INDEX?await caches.match(new URL('./',SCOPE).href):null)||Response.error()}
   })());
   return;
  }
