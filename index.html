@@ -6,7 +6,7 @@
 <title>Daiz-e · Recibos</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0B2A5B">
-<meta name="daize-version" content="4.5.1-creci-pj-sem-quebra">
+<meta name="daize-version" content="4.6.0-integracao-recibo-definitivo">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -76,6 +76,31 @@ const h=(t,p,...c)=>React.createElement(t,p&&typeof p.style==='string'?{...p,sty
 const html=_h.bind(h);
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 
+// Recebi+ > Daiz-e: transferência efêmera e de uso único, sem emissão automática.
+const RECEBI_RECEIPT_HANDOFF_KEY='recebiplus-daize-receipt-handoff-v1';
+const RECEBI_SOURCE_URL='https://advandrerbernardo-maker.github.io/Recebi-plus/';
+function vinculadaAoRecebi(r,link){
+ const a=r?.integracaoRecebi;
+ return Boolean(a&&link&&a.ownerId===link.ownerId&&a.chargeId===link.chargeId);
+}
+function receberRascunhoDoRecebi(){
+ if(new URLSearchParams(window.location.search).get('recebiplus')!=='1')return null;
+ try{
+  const raw=localStorage.getItem(RECEBI_RECEIPT_HANDOFF_KEY);
+  if(!raw)return null;
+  localStorage.removeItem(RECEBI_RECEIPT_HANDOFF_KEY);
+  const o=JSON.parse(raw);
+  if(o?.kind!=='recebiplus-daize-receipt-v1'||o.source!=='paid'||!Number.isSafeInteger(o.created_at)||o.created_at>Date.now()+15000||Date.now()-o.created_at>180000)return null;
+  if(typeof o.owner_id!=='string'||!o.owner_id.trim()||o.owner_id.length>128||typeof o.charge_id!=='string'||!o.charge_id.trim()||o.charge_id.length>128)return null;
+  if(typeof o.name!=='string'||!o.name.trim()||o.name.length>100||typeof o.description!=='string'||!o.description.trim()||o.description.length>150)return null;
+  if(!Number.isSafeInteger(o.cents)||o.cents<1||o.cents>10000000000)return null;
+  return {ownerId:o.owner_id,chargeId:o.charge_id,name:o.name.trim(),cents:o.cents,description:o.description.trim()};
+ }catch(_){return null}
+}
+const RECEBI_RECEBIDO=receberRascunhoDoRecebi();
+const RECEBI_EMITIDO=RECEBI_RECEBIDO?ls.get('dz-r',[]).find(r=>vinculadaAoRecebi(r,RECEBI_RECEBIDO)):null;
+const RECEBI_LIXEIRA=RECEBI_RECEBIDO&&!RECEBI_EMITIDO?ls.get('dz-r-lixeira',[]).find(r=>vinculadaAoRecebi(r,RECEBI_RECEBIDO)):null;
+
 const CHAVE_ASSINATURA='dz-assinatura-local-v1';
 const carregarAssinatura=()=>new Promise(ok=>{
  const data=ls.get(CHAVE_ASSINATURA,'');if(!data){ok(null);return}
@@ -113,7 +138,7 @@ const cpfOk=v=>{const d=v.replace(/\D/g,'');if(d.length!==11||/^(\d)\1+$/.test(d
 const blur=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const w=400,h=Math.round(i.height*w/i.width),c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(i,0,0,w,h);const p=x.getImageData(0,0,w,h).data,g=new Float32Array(w*h);for(let k=0;k<w*h;k++)g[k]=.3*p[4*k]+.59*p[4*k+1]+.11*p[4*k+2];let s=0,s2=0,n=0;for(let y=1;y<h-1;y++)for(let q=1;q<w-1;q++){const v=4*g[y*w+q]-g[y*w+q-1]-g[y*w+q+1]-g[(y-1)*w+q]-g[(y+1)*w+q];s+=v;s2+=v*v;n++}URL.revokeObjectURL(i.src);ok(s2/n-(s/n)*(s/n))};i.onerror=no;i.src=URL.createObjectURL(f)});
 const EM0={nome:'Imóveis Manaus Imobiliária',rs:'Daize do S S Avelar',cnpj:'23.046.404/0001-11',end:'Rua 24 de Maio, 410 - Centro, Manaus - AM, 69.010-080'};let EMI={...EM0,...ls.get('dz-e',{})};const E=r=>r.em||EMI;
 const cnpjMask=v=>{const d=v.replace(/\D/g,'').slice(0,14);return d.replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2')};
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const dbr=s=>s?s.split('-').reverse().join('/'):'';
 const stampBR=stamp=>stamp?new Date(stamp).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'';
 const nRec=r=>Number.parseInt(String(r&&r.numero||'0'),10)||0;
@@ -338,7 +363,7 @@ function extrair(t){
 
 function App(){
 const [assinaturaLocal,setAssinaturaLocal]=useState(()=>ls.get(CHAVE_ASSINATURA,'')),[statusAssinatura,setStatusAssinatura]=useState('');
-const [scr,setScr]=useState('home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(blank()),[cur,setCur]=useState(null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null),[editId,setEditId]=useState(null),[lixeira,setLixeira]=useState(()=>ls.get('dz-r-lixeira',[])),[mostrarLixeira,setMostrarLixeira]=useState(false),[ultimoNumero,setUltimoNumero]=useState(()=>Math.max(Number(ls.get('dz-last-num',0))||0,...ls.get('dz-r',[]).map(nRec),...ls.get('dz-r-lixeira',[]).map(nRec)));
+const [scr,setScr]=useState(RECEBI_EMITIDO?'done':RECEBI_LIXEIRA?'hist':RECEBI_RECEBIDO?'new':'home'),[clients,setClients]=useState(()=>ls.get('dz-c',[])),[recs,setRecs]=useState(()=>ls.get('dz-r',[])),[d,setD]=useState(()=>RECEBI_RECEBIDO&&!RECEBI_EMITIDO&&!RECEBI_LIXEIRA?{...blank(),clienteId:'',nome:RECEBI_RECEBIDO.name,valor:RECEBI_RECEBIDO.cents,ref:RECEBI_RECEBIDO.description,integracaoRecebi:{ownerId:RECEBI_RECEBIDO.ownerId,chargeId:RECEBI_RECEBIDO.chargeId,cents:RECEBI_RECEBIDO.cents}}:blank()),[cur,setCur]=useState(RECEBI_EMITIDO||null),[cf,setCf]=useState(null),[err,setErr]=useState(''),[ph,setPh]=useState(''),[q,setQ]=useState(''),[tp,setTp]=useState(()=>ls.get('dz-t',[])),[ef,setEf]=useState(EMI),[,setEm]=useState(EMI),[pm,setPm]=useState(''),[res,setRes]=useState(null),[editId,setEditId]=useState(null),[lixeira,setLixeira]=useState(()=>ls.get('dz-r-lixeira',[])),[mostrarLixeira,setMostrarLixeira]=useState(Boolean(RECEBI_LIXEIRA)),[ultimoNumero,setUltimoNumero]=useState(()=>Math.max(Number(ls.get('dz-last-num',0))||0,...ls.get('dz-r',[]).map(nRec),...ls.get('dz-r-lixeira',[]).map(nRec)));
 useEffect(()=>ls.set('dz-c',clients),[clients]);useEffect(()=>ls.set('dz-r',recs),[recs]);useEffect(()=>ls.set('dz-t',tp),[tp]);
 useEffect(()=>ls.set('dz-r-lixeira',lixeira),[lixeira]);useEffect(()=>ls.set('dz-last-num',ultimoNumero),[ultimoNumero]);
 const subirAssinatura=async e=>{
@@ -388,7 +413,7 @@ const numero=editId?(recs.find(r=>r.id===editId)?.numero||String(maiorNumero+1).
 const setF=k=>e=>setD({...d,[k]:e.target.value});
 const pick=e=>{const c=clients.find(x=>x.id===e.target.value);setD(c?{...d,clienteId:c.id,nome:c.nome,cpf:c.cpf,end:c.end}:{...d,clienteId:''})};
 const saveC=()=>{if(!cf.nome.trim()){setErr('Informe o nome do cliente.');return}setClients(cf.id?clients.map(c=>c.id===cf.id?cf:c):[...clients,{...cf,id:'c'+Date.now()}]);go('clients')};
-const review=()=>{if(!d.nome.trim())return setErr('Informe o nome do cliente.');if(d.cpf&&!cpfOk(d.cpf))return setErr('CPF inválido. Confira os números.');if(!d.valor)return setErr('Informe o valor.');if(!d.ref.trim())return setErr('Preencha o campo “Referente a”.');go('review')};
+const review=()=>{if(!d.nome.trim())return setErr('Informe o nome do cliente.');if(d.cpf&&!cpfOk(d.cpf))return setErr('CPF inválido. Confira os números.');if(!Number.isSafeInteger(d.valor)||d.valor<1)return setErr('Informe um valor válido.');if(!d.ref.trim())return setErr('Preencha o campo “Referente a”.');if(!/^\d{4}-\d{2}-\d{2}$/.test(d.data)||Number.isNaN(new Date(d.data+'T12:00:00').getTime()))return setErr('Informe uma data válida.');if(d.integracaoRecebi&&Number(d.valor)!==d.integracaoRecebi.cents)return setErr('O valor do recibo vinculado deve corresponder ao valor pago registrado no Recebi+. Para um valor diferente, revise a cobrança antes.');go('review')};
 const confirm=()=>{
  if(editId){
   const anterior=recs.find(r=>r.id===editId);
@@ -402,6 +427,15 @@ const confirm=()=>{
   setRecs(prev=>prev.map(r=>r.id===editId?atualizado:r));
   setCur(atualizado);setEditId(null);setD(blank());go('done');return;
  }
+ if(d.integracaoRecebi){
+  const anteriores=[...recs,...ls.get('dz-r',[])];
+  const existente=anteriores.find(r=>vinculadaAoRecebi(r,d.integracaoRecebi));
+  if(existente){setCur(existente);setEditId(null);setD(blank());go('done');return}
+  const excluido=[...lixeira,...ls.get('dz-r-lixeira',[])].find(r=>vinculadaAoRecebi(r,d.integracaoRecebi));
+  if(excluido){setMostrarLixeira(true);go('hist');setErr('Este pagamento já possui um recibo na Lixeira. Restaure o recibo e retifique-o, em vez de emitir outro número.');return}
+  if(d.valor!==d.integracaoRecebi.cents){setErr('O valor foi alterado em relação à parcela. Confira a cobrança antes de emitir.');go('new');return}
+  if(!window.confirm('CONFIRMA que o valor informado foi efetivamente recebido pela empresa?\n\nVocê está prestes a emitir um RECIBO REAL com valor, data, cliente e forma de pagamento escolhidos. O Recebi+ não verifica transações bancárias.\n\nPressione OK apenas depois de conferir os dados.'))return;
+ }
  const r={...d,id:'r'+Date.now(),numero,em:{...EMI}};
  setUltimoNumero(n=>Math.max(n,nRec(r)));setRecs(prev=>[r,...prev]);setCur(r);setD(blank());go('done')
 };
@@ -411,6 +445,7 @@ if(scr==='emp')return html`<${Top} t="Dados da imobiliária" back=${()=>go('home
 if(scr==='hist'){
  const L=(mostrarLixeira?lixeira:recs).filter(r=>(String(r.nome||'')+String(r.ref||'')+String(r.numero||'')).toLowerCase().includes(q.toLowerCase()));
  return html`<${Top} t=${mostrarLixeira?'Lixeira de recibos':'Histórico'} back=${()=>{if(mostrarLixeira){setMostrarLixeira(false);setQ('')}else go('home')}}/><main>
+${RECEBI_LIXEIRA&&mostrarLixeira&&html`<div class="err" role="alert">Já existe um recibo desta cobrança na Lixeira. Restaure e corrija o documento existente, em vez de emitir outro.</div>`}
  <input placeholder="Buscar por nome, número ou assunto" value=${q} onInput=${e=>setQ(e.target.value)}/>
  <div class="card">${L.length?L.map(r=>html`<div class="rec-item" key=${r.id}>
  ${mostrarLixeira?html`<div class="li" style="cursor:default"><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}</small></span><b>${brl(r.valor)}</b></div>`:html`<button class="li" onClick=${()=>{setCur(r);go('done')}}><span>Nº ${r.numero} · ${r.nome}<small>${dbr(r.data)} · ${r.ref}${r.revisadoEm?' · retificado':''}</small></span><b>${brl(r.valor)}</b></button>`}
@@ -430,7 +465,8 @@ if(scr==='client'&&cf)return html`<${Top} t=${cf.id?'Editar cliente':'Novo clien
 ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
 <button class="btn" onClick=${saveC}>Salvar cliente</button>
 ${cf.id&&html`<button class="btn alt" onClick=${()=>{setClients(clients.filter(c=>c.id!==cf.id));go('clients')}}>Excluir cliente</button>`}</main>`;
-if(scr==='new')return html`<${Top} t=${(editId?'Editar recibo · Nº ':'Novo recibo · Nº ')+numero} back=${cancelarFormulario}/><main><div class="card f" style="gap:12px">
+if(scr==='new')return html`<${Top} t=${(editId?'Editar recibo · Nº ':'Novo recibo · Nº ')+numero} back=${cancelarFormulario}/><main>
+${d.integracaoRecebi&&html`<div class="ok" role="status"><b>Recibo integrado ao Recebi+</b><p>A parcela está marcada como PAGA. Confira o recebimento efetivo, CPF (se disponível), data, valor, forma de pagamento e os dados da imobiliária antes de emitir.</p><a href=${RECEBI_SOURCE_URL} style="color:inherit;font-weight:700">← Voltar ao Recebi+</a></div>`}<div class="card f" style="gap:12px">
 <div class="f"><div class="row"><label class="btn" style="margin:0">📷 Abrir câmera<input type="file" accept="image/*" capture="environment" hidden onChange=${onPhoto}/></label><label class="btn alt" style="margin:0">🖼️ Anexar imagem<input type="file" accept="image/*" hidden onChange=${onPhoto}/></label></div>${ph==='busy'&&html`<div class="mut">Analisando nitidez, resolução e iluminação…</div>`}${ph==='reading'&&html`<div class="mut">Lendo o documento no aparelho… pode levar até 30 segundos.</div>`}${(ph==='bad'||ph==='fail'||ph==='offline')&&html`<div class="err" role="alert">${pm}</div>`}${(ph==='read'||ph==='partial')&&res&&html`<div class=${ph==='read'?'ok':'err'}><b>${ph==='read'?'Leitura com nome e CPF identificados. Confirme os dados antes de emitir.':'Leitura parcial: confira os dados identificados e preencha manualmente os campos ausentes. Não utilize informações duvidosas.'}</b><br/>Nome: ${res.nome?'lido':'não encontrado'} · CPF: ${res.cpf?'lido e válido':(res.inval?'lido, mas inválido: digite o CPF':'não encontrado')} · Endereço: ${res.end?'lido':'não encontrado neste documento'}</div>`}</div>
 <div class="f"><label>Cliente cadastrado</label><select value=${d.clienteId} onChange=${pick}><option value="">Digitar manualmente</option>${clients.map(c=>html`<option value=${c.id}>${c.nome}</option>`)}</select></div>
 <div class="f"><label>Nome</label><input value=${d.nome} onInput=${setF('nome')}/></div>
@@ -444,7 +480,8 @@ if(scr==='new')return html`<${Top} t=${(editId?'Editar recibo · Nº ':'Novo rec
 ${err&&html`<div class="err" role="alert">${err}</div>`}</div>
 <button class="btn" onClick=${review}>${editId?'Revisar alterações':'Revisar recibo'}</button>
 ${editId&&html`<button class="btn alt" onClick=${cancelarFormulario}>Cancelar edição</button>`}</main>`;
-if(scr==='review')return html`<${Top} t=${editId?'Conferir correção':'Conferir recibo'} back=${()=>go('new')}/><main>${!EMI.cnpj&&html`<div class="err" role="alert">O CNPJ da imobiliária não está cadastrado e não vai aparecer no recibo. Cadastre na tela inicial.</div>`}
+if(scr==='review')return html`<${Top} t=${editId?'Conferir correção':'Conferir recibo'} back=${()=>go('new')}/><main>
+${d.integracaoRecebi&&!editId&&html`<div class="ok" role="status"><b>Emissão definitiva</b><p>Ao confirmar, este documento terá numeração real e será salvo no histórico do Daiz-e deste aparelho. Confirme que o dinheiro foi recebido.</p></div>`}${!EMI.cnpj&&html`<div class="err" role="alert">O CNPJ da imobiliária não está cadastrado e não vai aparecer no recibo. Cadastre na tela inicial.</div>`}
 ${editId&&html`<div class="ok"><b>Correção do recibo nº ${numero}</b><br/>O número não será alterado. Ao salvar, a versão atualizada substituirá a anterior no histórico do Daiz-e e ficará identificada como retificada. Se já enviou o recibo, compartilhe a versão corrigida com o destinatário.</div>`}
 <${Paper} r=${{...d,numero}}/><button class="btn" onClick=${confirm}>${editId?'Salvar alterações':'Confirmar emissão'}</button><button class="btn alt" onClick=${()=>go('new')}>Voltar aos dados</button></main>`;
 return html`<${Top} t="Daiz-e"/><main>
