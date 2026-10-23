@@ -63,6 +63,6 @@ test('Transferencia temporaria de uso unico e limpeza nao alteram dados oficiais
 });
 test('Service Worker mantem cache offline original isolado do experimento',()=>{
  assert.match(sw,/const cacheTarget=url\.pathname===new URL\(betaPage\)\.pathname\?betaPage:INDEX/);
- assert.match(sw,/cache\.put\(cacheTarget,copia\)/);
+ assert.match(sw,/c\.put\(cacheTarget,copia\)/);
  assert.doesNotMatch(beta,/navigator\.serviceWorker\.register\(/);
 });
