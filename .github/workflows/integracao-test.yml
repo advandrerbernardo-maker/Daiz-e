@@ -1,0 +1,19 @@
+name: Validacao integracao experimental Daiz-e
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'integracao-teste.html'
+      - 'sw.js'
+      - 'integracao-tests/**'
+      - '.github/workflows/integracao-test.yml'
+  workflow_dispatch:
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test integracao-tests/*.node.test.mjs
